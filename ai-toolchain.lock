@@ -1,0 +1,13 @@
+project_alias: claude-opus-5
+harness: claude-code-desktop-cloud
+harness_version: "2026-08-19"
+model_public_id: claude-opus-5-20251401
+permission_profile: least-privilege
+max_concurrent_writers: 1
+file_ownership_policy: serialized_migrations_and_dtos
+budget_policy:
+  max_turns_per_package: 200
+  wall_clock_timeout_minutes: 120
+  cost_ceiling_usd: null
+retention: zero-transcript-for-protected-branches
+repository: Seismic-Fate/GRID-Alpha
