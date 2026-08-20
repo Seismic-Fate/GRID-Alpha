@@ -10,6 +10,13 @@
 yanked = "deny"
 # Explicit rather than relying on cargo-deny defaults, so a version bump of the tool cannot
 # silently relax the policy. Review finding "minor 7".
+#
+# That claim only holds if the tool itself is pinned -- the second review was right that an
+# unpinned cargo-deny could rename or re-default these keys underneath the comment. It is now
+# pinned in toolchains/dev-tools.lock and in both installers. Verified on the pinned version
+# (cargo-deny 0.20.2): `cargo deny check` emits no unknown-field or deprecation warning for
+# either key and reports "advisories ok, bans ok, licenses ok, sources ok" -- so both are read
+# and honoured, not silently ignored. Re-check this when the pin moves.
 unmaintained = "all"
 unsound = "all"
 ignore = []

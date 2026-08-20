@@ -4,16 +4,18 @@ default:
     just verify
 
 # Bootstrap dev tools and the local development database.
-# Run once per fresh environment. NOT a verify recipe: the seven recipes under
+# Run once per fresh environment. NOT a verify recipe: the recipes under
 # `verify` are a frozen contract (docs/02-adr/001-repo-bootstrap-decisions.md D5).
+# Versions are pinned: --locked pins a tool's dependencies, only --version pins the tool.
+# Keep in step with toolchains/dev-tools.lock and .github/workflows/alpha-ci.yml.
+# sqlx-cli takes the same feature narrowing CI uses -- the default set pulls the MySQL and
+# Postgres drivers this project never uses.
 bootstrap:
-    cargo install cargo-nextest --locked
-    cargo install sqlx-cli --locked
-    cargo install cargo-deny --locked
-    cargo install cargo-audit --locked
-    cargo install typos-cli --locked
-    cargo install hyperfine --locked
-    cargo install cargo-mutants --locked
+    cargo install cargo-nextest --locked --version 0.9.143
+    cargo install sqlx-cli --locked --version 0.9.0 --no-default-features --features sqlite,rustls
+    cargo install cargo-deny --locked --version 0.20.2
+    cargo install cargo-audit --locked --version 0.22.2
+    cargo install typos-cli --locked --version 1.49.0
     # Local SQLite development database for the compile-time query cache (ADR-002).
     # target/ must exist first: sqlite cannot create a file in a missing directory,
     # and a fresh checkout has no target/ until cargo runs.
@@ -86,6 +88,12 @@ serve-ui:
 # Evidence manifest
 evidence WP_ID:
     ./scripts/generate-evidence-manifest.sh {{WP_ID}}
+
+# Benchmark and mutation tooling. Deliberately NOT in `bootstrap`: no verify recipe and no CI
+# job uses either, so every CI run was compiling them from source for nothing.
+bootstrap-bench:
+    cargo install hyperfine --locked
+    cargo install cargo-mutants --locked
 
 # Experimental: mutation testing on statistical core
 mutants:
