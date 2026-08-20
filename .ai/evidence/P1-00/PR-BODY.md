@@ -82,7 +82,7 @@ against a blank database. Rollback: revert the branch — the database lives in 
 | `schema_meta_round_trips` | The applied version is derived from the migrator, not a hand-written literal that would go stale at `0002` |
 
 Three tests — the first in the repository, and the reason `cargo nextest run --workspace` can
-pass at all. **`tests/guards/run.sh` carries 38 committed behaviour cases** covering all six
+pass at all. **`tests/guards/run.sh` carries 42 committed behaviour cases** covering all six
 guard scripts and the `verify.sh` scope guard, run inside `just verify` (ADR-007).
 
 That suite has now caught six defects that reading did not — including the two most serious in
@@ -109,7 +109,7 @@ traceability fix was caught by the suite on its first run.
 
 ```text
 Work package:                    P1-00
-Final commit:                    5492b9083b8d  (code head; the evidence commit follows
+Final commit:                    6a1b350bbdf4  (code head; the evidence commit follows
                                  and is not self-covered -- a manifest cannot record its own SHA)
 Model/harness identifier:        claude-opus-5 (project alias; provider id and harness version
                                  read from ai-toolchain.lock, per alpha-spec 1.3)
@@ -132,9 +132,9 @@ Dependencies changed:            sqlx 0.8 -> 0.9 (ADR-003, security). No crate a
 Targeted tests:                  cargo nextest run --workspace  -> 3 tests run, 3 passed, 0 skipped
                                  cargo test --workspace --doc   -> 12 crate targets, 0 doctests
                                  cargo test -p grid-ffi --features flutter-bridge-tests -> 0 tests, ok
-                                 ./tests/guards/run.sh          -> 38 passed, 0 failed
+                                 ./tests/guards/run.sh          -> 42 passed, 0 failed
 Canonical verification command:  just verify
-Verification exit status:        0, run against 5492b9083b8d -- the commit this record and the
+Verification exit status:        0, run against 6a1b350bbdf4 -- the commit this record and the
                                  manifest both name.
 Golden files changed:            N/A -- no golden files exist (P1-06)
 Performance evidence:            N/A -- no performance target is affected (no code to measure)
@@ -184,13 +184,18 @@ Human approvals:                 The manifest's 8.12-mandated human_approvals.re
                                    Merge reviewer      CI skeleton and the final diff
 Known limitations:               (1) Role-scoped sign-offs: NONE obtained.
                                  (2) verify.ps1 -Scope Full is NOT ESTABLISHED as passing
-                                     ANYWHERE. Prior greens came from a script that could not
-                                     fail (ADR-009). This push is the first run of the fixed
-                                     script. CI is authoritative on the true final commit (12.8).
-                                 (3) Two fail-opens were found by the implementer AFTER round 2,
-                                     invisible to CI's own conclusion and to both reviewers.
-                                     Fixed and regression-tested. ADR-001 D5 records the lesson:
-                                     freezing a check list is not the same as trusting it.
+                                     under a gate proven capable of failing. Run 32382377066 was
+                                     green on the FIXED script but every command passed, so the
+                                     throw path was never exercised. The ADR-009 self-test step
+                                     lands with this push and is what closes it. CI is
+                                     authoritative on the true final commit (12.8).
+                                 (3) THREE fail-opens were found by the implementer AFTER round 2,
+                                     all invisible to CI's own conclusion and to both reviewers:
+                                     the Windows gate discarded exit codes, the secret scanner
+                                     examined zero files on Windows, and the fix for the first was
+                                     itself unproven. All fixed and regression-tested. ADR-001 D5
+                                     records the lesson: freezing a check list is not the same as
+                                     trusting it.
                                  (4) check-verify-parity.sh does not read verify.ps1, so nothing
                                      cross-checks the PowerShell implementation. That is why the
                                      parity guard could not have caught ADR-009's defect.
@@ -214,7 +219,7 @@ Known limitations:               (1) Role-scoped sign-offs: NONE obtained.
                                      job that any push cancels is hard to observe passing.
                                 (13) The stale grid-alpha-opus5 environment is still uncorrected;
                                      .env supplies correct values where it does not override.
-Evidence manifest hash:          sha256:ff08d0799287e9fc17734cc74e51f74537b074359fb3609e780a9b05acba4522
+Evidence manifest hash:          sha256:a179265f5625fe311104cef7124fed801059cd3edf53ad6fd17dac7c8c5335ea
                                  (.ai/evidence/P1-00/manifest.json)
 ```
 
@@ -296,6 +301,60 @@ stated identically in three places; crate boundaries verified per-crate from the
 `.sqlx` cache integrity and the drift gate; the RUSTSEC remediation; the fail-closed rewrite of
 `check-secrets.sh`; migration hygiene; and every CI claim verified against the GitHub API.
 
+## Found after the review finished — two fail-opens, both mine
+
+Neither reviewer could have found these. CI reported green.
+
+They surfaced only because round 2's fixes — the `$CI` fail-closed change and 23 new guard
+cases — made `windows-authoritative` print a real verdict for the first time. Run
+`32376218798` then showed, twelve lines apart:
+
+```
+33 passed, 2 failed          <- tests/guards/run.sh, exited non-zero
+[verify] All checks passed.  <- exit 0, job reported SUCCESS
+```
+
+**`scripts/verify.ps1` could not fail.** Sixteen native commands, zero `$LASTEXITCODE` checks.
+`$ErrorActionPreference = "Stop"` governs PowerShell error records, not native exit codes, and
+`#Requires -Version 7.2` pins the script to a version where
+`$PSNativeCommandUseErrorActionPreference` is off by default. Every exit code was discarded —
+`cargo fmt --check`, `clippy -D warnings`, `sqlx prepare --check`, `nextest`, `deny`, `audit`,
+all seven guards, `typos`. **ADR-009**, fourth D5 amendment.
+
+**`check-secrets.sh` examined zero files on Windows.** Both `git ls-files` loops opened nothing,
+so the guard printed `OK no secret patterns found` over a committed `ghp_` token and a
+credentialed connection string. The five cases expecting exit 0 all passed *vacuously*. The first
+defect hid the second: the suite caught it and `verify.ps1` threw the verdict away.
+
+### What that cost, stated plainly
+
+**Every `windows-authoritative` green before `a190e71` is withdrawn as evidence of passing** —
+including the one this body and ADR-003 previously cited as §14.2's Windows compatibility check.
+They show the steps *ran*. `verification_status` is `passed_with_exceptions` until a genuinely
+failing gate goes green.
+
+### And the fix itself had to be proven, not assumed
+
+Run `32382377066` came back green with `38 passed, 0 failed` on Windows — the CR-strip fixed the
+real mechanism. But **that green does not prove ADR-009 works**: every command passed, so no exit
+code ever needed propagating, and an inert `Assert-Ok` produces identical output. ADR-002's own
+argument — a gate that passes vacuously is a gate nobody has tested — applies to my fix too.
+
+Two things close it, and both are visible in CI:
+
+| | Proves |
+|---|---|
+| **ADR-009 self-test** step on `windows-authoritative` | Runs the real `verify.ps1` with a stub `cargo` that exits 7 and requires a non-zero exit. Fails loudly if the fix is ever inert |
+| **`verify.ps1` exit-code coverage** case in the guard suite | Every native command is immediately followed by an `Assert-Ok` (16/16), with a mutation control proving the check can fail. Nothing else could catch this — `check-verify-parity` never reads `verify.ps1` |
+
+The scanner's diff-mode branch also got the empty-scan guard its full-tree branch had, and both
+verdicts now state what they measured: `6561 added line(s) from 80 changed file(s)` rather than a
+bare `OK`. That number reading `0` is what a fail-open looks like.
+
+**The pattern, recorded in ADR-001 D5.** Two of the four D5 amendments were defects in the
+*harness around* the checks, not in the checks. Freezing a check list is not the same as
+trusting it.
+
 ## Before merging
 
 **Do not merge on the agent's authority** (§1.3, Appendix D). Outstanding:
@@ -306,10 +365,15 @@ stated identically in three places; crate boundaries verified per-crate from the
   asked for and that no implementer-written ADR could substitute for.
 - **Role-scoped sign-offs — none obtained.** Security/Release on `.claude/settings.json`;
   Architecture on the diff; Merge reviewer on the final diff.
-- **`windows-authoritative` has never been observed genuinely passing.** Every previous green
-  came from a `verify.ps1` that could not fail (ADR-009). This push is the first run of the fixed
-  script. Until it completes, the §8.11 merge gate has no established pass — and if it comes
-  back red, that is the gate working, not a regression.
+- **`windows-authoritative` has not yet been observed passing under a gate proven capable of
+  failing.** Run `32382377066` was green on the fixed script, but with everything passing it
+  exercised only the happy path. The **ADR-009 self-test** step added in `6a1b350bbdf4` is what closes
+  that; the evidence is re-recorded once a run carrying it is green. If that run comes back red,
+  the gate is working — read it that way before treating it as a regression.
+- **A third adversarial review is warranted.** The two most serious defects in this branch were
+  found after round 2 had finished, by the implementer, while CI reported green. The highest-value
+  things to attack: whether `Assert-Ok` covers every path through `verify.ps1`, and whether the
+  empty-scan guards can themselves be fooled.
 - **Governance:** reconcile `docs/05-sessions/` vs `docs/06-sessions/` before PRs #2 and #3
   merge, and fix the reviewer brief that keeps sending reviewers to a path the authority index
   calls invalid.
