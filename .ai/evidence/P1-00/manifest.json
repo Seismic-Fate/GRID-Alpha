@@ -1,7 +1,7 @@
 {
   "schema": "grid-alpha/evidence-manifest/1",
   "work_package_id": "P1-00",
-  "commit": "6a1b350bbdf494ecf9fe1be8fe032171da59c1d2",
+  "commit": "a61c3530015260c6330d7fc647941a5794e95b3c",
   "branch": "wp/P1-00-repo-bootstrap",
   "model": "claude-opus-5",
   "work_package": {
@@ -9,11 +9,11 @@
     "file": "docs/01-work-packages/p1-00-work-package.md"
   },
   "commit_info": {
-    "sha": "6a1b350bbdf494ecf9fe1be8fe032171da59c1d2",
+    "sha": "a61c3530015260c6330d7fc647941a5794e95b3c",
     "branch": "wp/P1-00-repo-bootstrap",
     "range": "origin/main...HEAD",
-    "generated_at": "2026-08-20T18:18:36Z",
-    "state": "uncommitted: 2 path(s) not yet in 6a1b350bbdf494ecf9fe1be8fe032171da59c1d2"
+    "generated_at": "2026-08-20T20:39:58Z",
+    "state": "uncommitted: 2 path(s) not yet in a61c3530015260c6330d7fc647941a5794e95b3c"
   },
   "model_and_harness": {
     "project_alias": "claude-opus-5",
@@ -139,84 +139,84 @@
         "exit_status": 0,
         "summary": "All 9 recipes passed. cargo nextest: 3 tests run, 3 passed, 0 skipped. Doctests: 12 crate targets, 0 doctests. Guard suite: 42 cases passed (was 38; four added for the ADR-009 coverage check with its mutation control, and for the diff-mode empty-scan guard). check-verify-parity: 16 steps.",
         "canonical": true,
-        "run_against_commit": "6a1b350bbdf494ecf9fe1be8fe032171da59c1d2"
+        "run_against_commit": "a61c3530015260c6330d7fc647941a5794e95b3c"
       },
       {
         "command": "env -u DATABASE_URL SQLX_OFFLINE=true cargo check --workspace",
         "exit_status": 0,
-        "run_against_commit": "6a1b350bbdf494ecf9fe1be8fe032171da59c1d2",
+        "run_against_commit": "a61c3530015260c6330d7fc647941a5794e95b3c",
         "summary": "Fresh-clone offline compile (M5). Proven against a forced macro re-expansion, not a warm cache: `touch crates/persistence/src/lib.rs` then check -> exit 0. Proven to FAIL correctly: with .sqlx moved aside -> exit 101, 'SQLX_OFFLINE=true but there is no cached data for this query'. Now a CI step in linux-smoke."
       },
       {
         "command": "./scripts/verify.sh <scope> (Full FULL full Changed changed smoke --help 'full ' and no argument)",
         "exit_status": 0,
-        "run_against_commit": "6a1b350bbdf494ecf9fe1be8fe032171da59c1d2",
+        "run_against_commit": "a61c3530015260c6330d7fc647941a5794e95b3c",
         "summary": "C1 scope guard, verified across the argument space with cargo stubbed so the guard is observed in isolation. Accepted forms reach the first check (stub exit 99); smoke, --help and 'full ' are rejected with exit 2 and a named reason. Before the fix all nine invocations exited 0 having run nothing."
       },
       {
         "command": "./tests/guards/run.sh",
         "exit_status": 0,
-        "run_against_commit": "6a1b350bbdf494ecf9fe1be8fe032171da59c1d2",
+        "run_against_commit": "a61c3530015260c6330d7fc647941a5794e95b3c",
         "summary": "42 cases passed, 0 failed -- from 12 at the start of round 2. All six guards covered, plus the verify.sh scope guard and the verify.ps1 exit-code coverage check. Three cases carry an explicit CONTROL asserting the unmodified subject passes first, so a fail-closed case cannot pass for the wrong reason; the ADR-009 coverage check carries a mutation control proving it can fail at all."
       },
       {
         "command": "cargo sqlx prepare --check --workspace -- --lib",
         "exit_status": 0,
-        "run_against_commit": "6a1b350bbdf494ecf9fe1be8fe032171da59c1d2",
+        "run_against_commit": "a61c3530015260c6330d7fc647941a5794e95b3c",
         "summary": "Drift detection proven by mutation: editing the query -> exit 1 ('missing one or more queries'); restoring -> exit 0."
       },
       {
         "command": "./scripts/check-migrations.sh origin/main",
         "exit_status": 0,
-        "run_against_commit": "6a1b350bbdf494ecf9fe1be8fe032171da59c1d2",
+        "run_against_commit": "a61c3530015260c6330d7fc647941a5794e95b3c",
         "summary": "Append-only satisfied, 1 migration, base origin/main. Behaviour-tested: add PASS, modify FAIL, delete FAIL, amend-an-unmerged-draft PASS, and no-base-ref FAILS under $CI."
       },
       {
         "command": "./scripts/check-secrets.sh origin/main",
         "exit_status": 0,
-        "run_against_commit": "6a1b350bbdf494ecf9fe1be8fe032171da59c1d2",
+        "run_against_commit": "a61c3530015260c6330d7fc647941a5794e95b3c",
         "summary": "No secret patterns found (diff vs origin/main). The detector's own two files are no longer excluded from all scanning -- they get a dedicated always-on pass, with a line-level '# nosecret' exemption (minor 4). Verified that no current pattern self-matches either file."
       },
       {
         "command": "./scripts/check-traceability.sh origin/main",
         "exit_status": 0,
-        "run_against_commit": "6a1b350bbdf494ecf9fe1be8fe032171da59c1d2",
+        "run_against_commit": "a61c3530015260c6330d7fc647941a5794e95b3c",
         "summary": "All 65 non-trivial paths traced individually, without PR_BODY -- which is how the build jobs run it now that they check out at fetch-depth 0."
       },
       {
         "command": "./scripts/check-authority-sync.sh",
         "exit_status": 0,
-        "run_against_commit": "6a1b350bbdf494ecf9fe1be8fe032171da59c1d2",
+        "run_against_commit": "a61c3530015260c6330d7fc647941a5794e95b3c",
         "summary": "The two alpha-spec.md copies are byte-identical (94813 bytes)."
       },
       {
         "command": "./scripts/check-verify-parity.sh",
         "exit_status": 0,
-        "run_against_commit": "6a1b350bbdf494ecf9fe1be8fe032171da59c1d2",
+        "run_against_commit": "a61c3530015260c6330d7fc647941a5794e95b3c",
         "summary": "justfile and scripts/verify.sh agree on 16 verification steps. Order-sensitive. Now also fails, with a diagnosis, when either extraction yields zero commands -- previously that died at exit 1 with an empty message (M8)."
       },
       {
         "command": "./scripts/check-env-contract.sh",
         "exit_status": 0,
-        "run_against_commit": "6a1b350bbdf494ecf9fe1be8fe032171da59c1d2",
+        "run_against_commit": "a61c3530015260c6330d7fc647941a5794e95b3c",
         "summary": "DATABASE_URL=sqlite:target/grid-dev.db (from .env, repo-relative); SQLX_OFFLINE=true (from .env), .sqlx/ present. The guard now resolves SQLX_OFFLINE the way the query! macro does rather than reporting only the shell's view (C2)."
       },
       {
         "command": "cargo deny check",
         "exit_status": 0,
-        "run_against_commit": "6a1b350bbdf494ecf9fe1be8fe032171da59c1d2",
+        "run_against_commit": "a61c3530015260c6330d7fc647941a5794e95b3c",
         "summary": "advisories ok, bans ok, licenses ok, sources ok on the pinned cargo-deny 0.20.2. No unknown-field or deprecation warning for the explicit unmaintained/unsound keys, so both are honoured rather than silently ignored -- answering the reviewer's question 7, which they could not run."
       },
       {
         "command": ".\\\\scripts\\\\verify.ps1 -Scope Full",
         "exit_status": null,
         "run_against_commit": null,
-        "summary": "STILL NOT ESTABLISHED. Run 32382377066 on a190e71 was green on the FIXED script, and the log shows the guard suite at '38 passed, 0 failed' on Windows -- but every command passed, so no exit code ever needed propagating. An inert Assert-Ok and a working one produce identical output on an all-green run, so that green does not demonstrate ADR-009's fix. Per ADR-002's own argument, a gate that passes vacuously is a gate nobody has tested; that applies to the fix as much as to the gate. The 'ADR-009 self-test' step added in this push runs the real verify.ps1 with a stub cargo that exits 7 and requires a non-zero exit. This entry is re-recorded from the first run carrying that step. Owner ruling D11."
+        "summary": "THROW PATH PROVEN; FULL PASS STILL NOT ESTABLISHED. The ADR-009 self-test ran for the first time in run 32403569748 (c2fc053) and demonstrated the fix: with a stub cargo exiting 7, Assert-Ok fired, named the failing command ('[verify] FAILED: cargo fmt --all -- --check (exit 7)') and verify.ps1 exited 1. That is the first time this branch's merge gate has been observed refusing to pass. The happy path is covered by run 32382377066 on a190e71, where the same fixed script exited 0 with the guard suite at 38 passed. NOT re-recorded as established, deliberately: those are two runs of two different commits, and assembling a verdict from pieces that were never simultaneously true is the shape of the M2 defect this record already carries once. The self-test step itself failed on that run -- it inherited $LASTEXITCODE=1 from the child pwsh it had asked to fail, instead of setting its own -- so 'Authoritative verification' was skipped and no full pass happened on c2fc053. The step now ends with an explicit exit 0. This entry is re-recorded from ONE run in which the self-test passes AND Authoritative verification passes. Owner ruling D11."
       },
       {
         "command": "alpha-ci run 32332121205 (guards / linux-smoke / windows-authoritative)",
         "exit_status": 0,
-        "run_against_commit": "6a1b350bbdf494ecf9fe1be8fe032171da59c1d2",
+        "run_against_commit": "a61c3530015260c6330d7fc647941a5794e95b3c",
         "summary": "All three jobs green on the previous head. Cited in place of run 32329932430 because that run predates de3b36c; this is the run that covers the commit the branch was actually sitting on when the second review was written."
       }
     ],
@@ -329,6 +329,11 @@
         "id": "SELF-3 (the ADR-009 fix was itself unproven)",
         "summary": "run 32382377066 was green on the fixed verify.ps1, but with every command passing it exercised only the happy path -- an inert Assert-Ok would have produced the same output",
         "disposition": "FIXED. A self-test step on windows-authoritative runs the REAL script with a failing cargo and requires a non-zero exit, covering the other direction. A guard-suite case asserts every native command is followed by an Assert-Ok (16/16) with its own mutation control, since check-verify-parity never reads verify.ps1 and could not catch a command added without one. Also closed the symmetrical empty-scan gap on check-secrets' diff-mode branch, and both verdicts now state what they measured rather than an unqualified OK."
+      },
+      {
+        "id": "SELF-4 (the self-test step inherited its exit code)",
+        "summary": "the ADR-009 self-test asserted success and then failed the job: after `pwsh -File` returned 1 -- deliberately, since the child was asked to fail -- $LASTEXITCODE stayed 1 and GitHub's pwsh wrapper exited the step with it",
+        "disposition": "FIXED, and worth separating from the finding it was testing. The SCRIPT behaved correctly; run 32403569748's log shows Assert-Ok firing, naming 'cargo fmt --all -- --check (exit 7)', and verify.ps1 exiting 1. Only the harness around it was wrong. The step now ends with an explicit `exit 0`; the throw path still fails the step because it terminates first. General rule recorded in ADR-009: a verification step that deliberately runs a command it expects to fail must state its own verdict, never inherit one from the subprocess."
       }
     ]
   },
@@ -363,7 +368,7 @@
   },
   "known_limitations": [
     "Role-scoped sign-offs: NONE obtained. Decision rulings D1-D9 were given in-session; a ruling on a question is not a review of a diff. Architecture, Security/Release, Data/Licensing and Merge reviewer all remain outstanding, and the owner has agreed to record the C3 licensing ruling and the M6/M7 scope and 14.2 deviations on PR #1 directly.",
-    "scripts/verify.ps1 -Scope Full is NOT ESTABLISHED as passing under a gate proven capable of failing. Run 32382377066 was green on the fixed script but exercised only the happy path. The ADR-009 self-test step lands with this push and is what closes it. CI is authoritative on the true final commit (12.8).",
+    "scripts/verify.ps1 -Scope Full is NOT ESTABLISHED as passing in a single run alongside proof that it can fail. Both halves now exist -- the happy path in run 32382377066, the throw path in the ADR-009 self-test in run 32403569748 -- but in different runs of different commits, and combining them would repeat M2's error. Awaiting one run carrying both. CI is authoritative on the true final commit (12.8).",
     "Three fail-opens have now been found by the implementer after round 2, all invisible to CI's own conclusion: the Windows gate discarded exit codes, the secret scanner examined zero files on Windows, and the fix for the first was itself unproven. All three are fixed and regression-tested.",
     "Two fail-opens were found by the implementer in this round, both invisible to CI's own conclusion and to two adversarial reviews: the Windows gate discarded exit codes, and the secret scanner examined zero files on Windows. Both are fixed and regression-tested. The general lesson is recorded in ADR-001 D5: freezing a check list is not the same as trusting it.",
     "scripts/check-verify-parity.sh does not read scripts/verify.ps1, so nothing cross-checks the PowerShell implementation against the other two. That is why ADR-009's defect was invisible to the parity guard. Extending it is a P1-11 follow-up.",

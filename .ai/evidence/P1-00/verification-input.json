@@ -7,72 +7,72 @@
         "exit_status": 0,
         "summary": "All 9 recipes passed. cargo nextest: 3 tests run, 3 passed, 0 skipped. Doctests: 12 crate targets, 0 doctests. Guard suite: 42 cases passed (was 38; four added for the ADR-009 coverage check with its mutation control, and for the diff-mode empty-scan guard). check-verify-parity: 16 steps.",
         "canonical": true,
-        "run_against_commit": "6a1b350bbdf494ecf9fe1be8fe032171da59c1d2"
+        "run_against_commit": "a61c3530015260c6330d7fc647941a5794e95b3c"
       },
       {
         "command": "env -u DATABASE_URL SQLX_OFFLINE=true cargo check --workspace",
         "exit_status": 0,
-        "run_against_commit": "6a1b350bbdf494ecf9fe1be8fe032171da59c1d2",
+        "run_against_commit": "a61c3530015260c6330d7fc647941a5794e95b3c",
         "summary": "Fresh-clone offline compile (M5). Proven against a forced macro re-expansion, not a warm cache: `touch crates/persistence/src/lib.rs` then check -> exit 0. Proven to FAIL correctly: with .sqlx moved aside -> exit 101, 'SQLX_OFFLINE=true but there is no cached data for this query'. Now a CI step in linux-smoke."
       },
       {
         "command": "./scripts/verify.sh <scope> (Full FULL full Changed changed smoke --help 'full ' and no argument)",
         "exit_status": 0,
-        "run_against_commit": "6a1b350bbdf494ecf9fe1be8fe032171da59c1d2",
+        "run_against_commit": "a61c3530015260c6330d7fc647941a5794e95b3c",
         "summary": "C1 scope guard, verified across the argument space with cargo stubbed so the guard is observed in isolation. Accepted forms reach the first check (stub exit 99); smoke, --help and 'full ' are rejected with exit 2 and a named reason. Before the fix all nine invocations exited 0 having run nothing."
       },
       {
         "command": "./tests/guards/run.sh",
         "exit_status": 0,
-        "run_against_commit": "6a1b350bbdf494ecf9fe1be8fe032171da59c1d2",
+        "run_against_commit": "a61c3530015260c6330d7fc647941a5794e95b3c",
         "summary": "42 cases passed, 0 failed -- from 12 at the start of round 2. All six guards covered, plus the verify.sh scope guard and the verify.ps1 exit-code coverage check. Three cases carry an explicit CONTROL asserting the unmodified subject passes first, so a fail-closed case cannot pass for the wrong reason; the ADR-009 coverage check carries a mutation control proving it can fail at all."
       },
       {
         "command": "cargo sqlx prepare --check --workspace -- --lib",
         "exit_status": 0,
-        "run_against_commit": "6a1b350bbdf494ecf9fe1be8fe032171da59c1d2",
+        "run_against_commit": "a61c3530015260c6330d7fc647941a5794e95b3c",
         "summary": "Drift detection proven by mutation: editing the query -> exit 1 ('missing one or more queries'); restoring -> exit 0."
       },
       {
         "command": "./scripts/check-migrations.sh origin/main",
         "exit_status": 0,
-        "run_against_commit": "6a1b350bbdf494ecf9fe1be8fe032171da59c1d2",
+        "run_against_commit": "a61c3530015260c6330d7fc647941a5794e95b3c",
         "summary": "Append-only satisfied, 1 migration, base origin/main. Behaviour-tested: add PASS, modify FAIL, delete FAIL, amend-an-unmerged-draft PASS, and no-base-ref FAILS under $CI."
       },
       {
         "command": "./scripts/check-secrets.sh origin/main",
         "exit_status": 0,
-        "run_against_commit": "6a1b350bbdf494ecf9fe1be8fe032171da59c1d2",
+        "run_against_commit": "a61c3530015260c6330d7fc647941a5794e95b3c",
         "summary": "No secret patterns found (diff vs origin/main). The detector's own two files are no longer excluded from all scanning -- they get a dedicated always-on pass, with a line-level '# nosecret' exemption (minor 4). Verified that no current pattern self-matches either file."
       },
       {
         "command": "./scripts/check-traceability.sh origin/main",
         "exit_status": 0,
-        "run_against_commit": "6a1b350bbdf494ecf9fe1be8fe032171da59c1d2",
+        "run_against_commit": "a61c3530015260c6330d7fc647941a5794e95b3c",
         "summary": "All 65 non-trivial paths traced individually, without PR_BODY -- which is how the build jobs run it now that they check out at fetch-depth 0."
       },
       {
         "command": "./scripts/check-authority-sync.sh",
         "exit_status": 0,
-        "run_against_commit": "6a1b350bbdf494ecf9fe1be8fe032171da59c1d2",
+        "run_against_commit": "a61c3530015260c6330d7fc647941a5794e95b3c",
         "summary": "The two alpha-spec.md copies are byte-identical (94813 bytes)."
       },
       {
         "command": "./scripts/check-verify-parity.sh",
         "exit_status": 0,
-        "run_against_commit": "6a1b350bbdf494ecf9fe1be8fe032171da59c1d2",
+        "run_against_commit": "a61c3530015260c6330d7fc647941a5794e95b3c",
         "summary": "justfile and scripts/verify.sh agree on 16 verification steps. Order-sensitive. Now also fails, with a diagnosis, when either extraction yields zero commands -- previously that died at exit 1 with an empty message (M8)."
       },
       {
         "command": "./scripts/check-env-contract.sh",
         "exit_status": 0,
-        "run_against_commit": "6a1b350bbdf494ecf9fe1be8fe032171da59c1d2",
+        "run_against_commit": "a61c3530015260c6330d7fc647941a5794e95b3c",
         "summary": "DATABASE_URL=sqlite:target/grid-dev.db (from .env, repo-relative); SQLX_OFFLINE=true (from .env), .sqlx/ present. The guard now resolves SQLX_OFFLINE the way the query! macro does rather than reporting only the shell's view (C2)."
       },
       {
         "command": "cargo deny check",
         "exit_status": 0,
-        "run_against_commit": "6a1b350bbdf494ecf9fe1be8fe032171da59c1d2",
+        "run_against_commit": "a61c3530015260c6330d7fc647941a5794e95b3c",
         "summary": "advisories ok, bans ok, licenses ok, sources ok on the pinned cargo-deny 0.20.2. No unknown-field or deprecation warning for the explicit unmaintained/unsound keys, so both are honoured rather than silently ignored -- answering the reviewer's question 7, which they could not run."
       },
       {
@@ -84,7 +84,7 @@
       {
         "command": "alpha-ci run 32332121205 (guards / linux-smoke / windows-authoritative)",
         "exit_status": 0,
-        "run_against_commit": "6a1b350bbdf494ecf9fe1be8fe032171da59c1d2",
+        "run_against_commit": "a61c3530015260c6330d7fc647941a5794e95b3c",
         "summary": "All three jobs green on the previous head. Cited in place of run 32329932430 because that run predates de3b36c; this is the run that covers the commit the branch was actually sitting on when the second review was written."
       }
     ],
