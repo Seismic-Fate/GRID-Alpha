@@ -1,0 +1,16 @@
+# Spell-check configuration for the frozen `typos` verify recipe.
+#
+# Additions require a real justification: this file must never be used to silence a genuine
+# misspelling in order to make `just verify` pass (alpha-spec.md 12.7).
+
+[default.extend-words]
+# PB-MAE decomposes into per-position Normalized MAE terms (NMAE_QB, NMAE_RB, ...).
+# alpha-spec.md 7.4. Otherwise corrected to "NAME".
+NMAE = "NMAE"
+
+[files]
+extend-exclude = [
+    ".sqlx/",          # generated query cache
+    "Cargo.lock",      # generated
+    "target/",
+]
