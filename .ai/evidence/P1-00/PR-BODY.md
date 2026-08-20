@@ -121,26 +121,39 @@ Fresh-context reviewer:          DONE - independent adversarial agent, PR #2.
                                  Verdict CONDITIONAL: 6 blockers, 10 major, 9 minor.
 Reviewer findings resolved:      6/6 blockers + highest-value major, each reproduced
                                  before fixing. Remaining major/minor NOT triaged.
-Human approvals:                 Obtained: D1 branch naming; D2 remediate skeleton in P1-00;
-                                 D3 numbered vault; D4 MIT OR Apache-2.0; D5 frozen recipes;
-                                 D6 environment fix; ADR-003; ADR-004; ADR-005.
-                                 Outstanding: Security/Release owner on .claude/settings.json;
-                                 Merge reviewer on the CI skeleton.
-Known limitations:               (1) scripts/verify.ps1 -Scope Full NOT RUN — authoritative for
-                                     merge but Windows-only; runs in the windows-authoritative job.
-                                 (2) check-env-contract.sh fails in-session: the stale
-                                     DATABASE_URL/SQLX_OFFLINE are baked into the running
-                                     process. Needs the owner's environment fix plus a new
-                                     session. CI unaffected.
-                                 (3) -Scope Changed still unimplemented in both verify scripts
+Human approvals:                 TWO DIFFERENT THINGS, previously conflated (review finding C5).
+                                 DECISION RULINGS OBTAINED - given by the owner in-session, each
+                                 answering an explicit question naming the alternatives:
+                                   D1 branch naming; D2 remediate skeleton inside P1-00;
+                                   D3 numbered vault; D4 MIT OR Apache-2.0; D5 frozen recipes;
+                                   D6 environment fix; ADR-003; ADR-004; ADR-005.
+                                 ROLE-SCOPED SIGN-OFFS OBTAINED - none. A ruling on a question
+                                 is not a review of a diff. Still required:
+                                   Architecture owner  authority order, crate boundaries,
+                                                       the P1-02 -> P1-00 rework
+                                   Security/Release    .claude/settings.json
+                                   Data/Licensing      D4, which was outside P1-00's stated scope
+                                   Merge reviewer      CI skeleton and the final diff
+                                 The owner holds every role per the authority index, so both
+                                 statements are true at once - but not interchangeable.
+Known limitations:               (1) scripts/verify.ps1 -Scope Full NOT RUN - authoritative for
+                                     merge but Windows-only; has never completed anywhere.
+                                 (2) Remaining 10 major / 9 minor review findings NOT triaged.
+                                     Only the 6 blockers and the top major are resolved.
+                                 (3) An evidence manifest cannot record its own commit SHA. It
+                                     attests to 4de62ec774a6; the manifest commit follows.
+                                     CI is authoritative on the true final commit (12.8).
+                                 (4) -Scope Changed still unimplemented in both verify scripts
                                      though 8.11 cites it as canonical. Deferred to P1-11.
-                                 (4) justfile and verify.sh remain duplicate implementations;
+                                 (5) justfile and verify.sh remain duplicate implementations;
                                      unification barred by D5, drift guarded by parity check.
-                                 (5) Cargo.toml, ai-toolchain.lock, rust-toolchain.toml and
+                                 (6) Cargo.toml, ai-toolchain.lock, rust-toolchain.toml and
                                      justfile retain CRLF. Normalization deferred to P1-11.
-                                 (6) No fixtures. 9.5 lists them under P1-00; deferred to
+                                 (7) No fixtures. 9.5 lists them under P1-00; deferred to
                                      P1-03/P1-04 and recorded in ADR-001.
-                                 (7) No fresh-context review performed.
+                                 (8) The stale grid-alpha-opus5 environment is still uncorrected;
+                                     .env now supplies correct values when the environment does
+                                     not override, so CI and fresh clones are unaffected.
 Evidence manifest hash:          sha256:d90ccdc3f1471f2a9262cdd1ccd927f9a384d893fbe9d83c835a9469006cdeda
                                  (.ai/evidence/P1-00/manifest.json — regenerate after commit)
 ```
