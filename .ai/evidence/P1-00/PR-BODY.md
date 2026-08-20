@@ -91,8 +91,8 @@ false-negative found and fixed in `check-secrets.sh`, which initially ignored un
 
 ```text
 Work package:                    P1-00
-Final commit:                    f5d0d8bb41675a715e37353373f2e5d0629a4824
-                                 (code series head; the evidence commit follows it)
+Final commit:                    bab9dfa3ab21892094a5f3d839d4ca95fc312b4c
+                                 (code head; the evidence commit follows, not self-covered)
 Model/harness identifier:        claude-opus-5 (project alias; provider id and harness version
                                  read from ai-toolchain.lock, per alpha-spec 1.3)
 Environment:                     grid-alpha-opus5 (Linux 6.18.5; rustc 1.94.1; cargo 1.94.1)
@@ -117,9 +117,10 @@ Performance evidence:            N/A — no performance target is affected (no c
 Security/licensing review:       RUSTSEC-2023-0071 remediated (ADR-003). License corrected to
                                  MIT OR Apache-2.0 (ADR-001 D4). .claude/settings.json
                                  least-privilege profile AWAITS Security/Release owner approval.
-Fresh-context reviewer:          PENDING — not performed. alpha-spec 1.4 and 8.8.2 require a
-                                 reviewer who is not the implementer.
-Reviewer findings resolved:      PENDING
+Fresh-context reviewer:          DONE - independent adversarial agent, PR #2.
+                                 Verdict CONDITIONAL: 6 blockers, 10 major, 9 minor.
+Reviewer findings resolved:      6/6 blockers + highest-value major, each reproduced
+                                 before fixing. Remaining major/minor NOT triaged.
 Human approvals:                 Obtained: D1 branch naming; D2 remediate skeleton in P1-00;
                                  D3 numbered vault; D4 MIT OR Apache-2.0; D5 frozen recipes;
                                  D6 environment fix; ADR-003; ADR-004; ADR-005.
@@ -140,22 +141,54 @@ Known limitations:               (1) scripts/verify.ps1 -Scope Full NOT RUN — 
                                  (6) No fixtures. 9.5 lists them under P1-00; deferred to
                                      P1-03/P1-04 and recorded in ADR-001.
                                  (7) No fresh-context review performed.
-Evidence manifest hash:          sha256:a9be52b5fe811f6ebfed705012b936e4f5352f3a831466c5c5a9fae518d57384
+Evidence manifest hash:          sha256:d90ccdc3f1471f2a9262cdd1ccd927f9a384d893fbe9d83c835a9469006cdeda
                                  (.ai/evidence/P1-00/manifest.json — regenerate after commit)
 ```
 
-## Commit sequencing — done
+## Independent adversarial review — PR #2
 
-The manifest records `commit` and `files_changed` but is itself part of the change set, so it
-cannot contain its own SHA. Resolved by ordering rather than by fudging it:
+A fresh-context reviewer examined the branch at `7787921` and returned **CONDITIONAL: 6
+blockers, 10 major, 9 minor**. Every blocker was reproduced here before being fixed. Findings
+and dispositions are in the evidence manifest under `review`, per §8.12.
 
-1. Ten atomic code commits, head **`f5d0d8b`**.
-2. `just verify` **re-run against that head — exit 0**. §12.8 forbids claiming a command passed
-   unless it ran against the final commit, so the earlier run was not reused.
-3. The evidence manifest committed **last** (`04dee2a`), recording `f5d0d8b` as the code head
-   it attests to.
+| | Finding | Disposition |
+|---|---|---|
+| **M1** | `check-secrets.sh` **failed open** — invalid empty-tree git expression, fatal swallowed by a fallback, printed OK having scanned nothing tracked | Fixed. Fails closed; regression-tested against a committed `ghp_` token with no `origin/main` |
+| **C1** | `just bootstrap` fails on a fresh checkout (SQLite code 14) | Already fixed in `d35a905`; CI reached the same diagnosis independently |
+| **C2** | Fresh clone would not compile: `.env` set `DATABASE_URL` without `SQLX_OFFLINE`, so the committed cache was never consulted (exit 101) | Fixed. ADR-002 corrected — it had stated the opposite |
+| **C3** | Manifest attested to a commit 4 behind HEAD, two of them touching CI-gating code | Fixed. Regenerated against `bab9dfa` |
+| **C4** | PR body claimed `commit_info.state` reads `clean`; the artifact read `uncommitted: 3 path(s)` | Fixed. **I asserted what I intended the artifact to say without re-reading it.** Removed |
+| **C5** | Approvals read as contradictory: role sign-offs "not obtained" beside ADRs asserting owner acceptance | Fixed. Rulings and sign-offs separated; a ruling on a question is not a review of a diff |
+| **C6** | Licence change out of stated scope, attributed to the wrong role | Fixed. Re-attributed to Data/Licensing owner; scope deviation recorded. D4 touches only `LICENSE*` and is independently revertible |
 
-`commit_info.state` reads `clean`. The manifest attests to code that exists.
+**The remaining major and minor findings are not yet triaged** — outstanding work on this PR,
+recorded as a known limitation rather than quietly closed.
+
+The reviewer also confirmed what holds: the §1.5 authority-order correction, ADR-004's
+whitespace-only claim for `verify.sh`, the manifest hash, a 172-crate licence census against
+`deny.toml`, and `cargo fmt` / `clippy -D warnings` / both tests. `cargo deny`, `cargo audit`
+and `typos` were unavailable in their environment, so RUSTSEC remediation was confirmed there
+only indirectly; it is confirmed directly here (`cargo audit` exit 0).
+
+## Commit sequencing
+
+An evidence manifest cannot record the SHA of its own commit. This one attests to **`bab9dfa`**,
+the head of every code and documentation change; the manifest commit follows it.
+`commit_info.state` reads `uncommitted: 1 path(s)` — the manifest file itself at generation
+time, inherent to the ordering. Per §12.8, **CI is authoritative on the true final commit.**
+
+## Before merging
+
+**Do not merge on the agent's authority** (§1.3, Appendix D). Outstanding:
+
+- **Triage of the remaining major and minor review findings** — the 6 blockers are fixed, the rest are not.
+- **Role-scoped sign-offs**: Security/Release on `.claude/settings.json`; Data/Licensing on the
+  out-of-scope D4 licence change; Merge reviewer on the final diff.
+- **`windows-authoritative` CI must pass** — `verify.ps1 -Scope Full` is authoritative for merge
+  and has never completed successfully anywhere.
+
+Owner follow-ups: correct the `grid-alpha-opus5` environment per ADR-002, and configure branch
+protection on `main` (an explicit P1-00 non-goal).
 
 ---
 _Generated by [Claude Code](https://claude.ai/code)_
