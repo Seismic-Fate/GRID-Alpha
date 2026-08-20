@@ -11,7 +11,14 @@
     "",
     "Pipeline and obfuscation interception is the SANDBOX's job, not this file's. These rules",
     "reduce accidental damage and make intent explicit; they are not a containment boundary.",
-    "A rule that reads as protection while providing none is worse than an absent rule."
+    "A rule that reads as protection while providing none is worse than an absent rule.",
+    "",
+    "The allow list uses PREFIX forms for the verify recipes -- 'just check-*', 'just test-*' --",
+    "rather than naming each one. The enumerated form had already fallen behind: ADR-007 added",
+    "test-doc and check-guards to the verify chain and this file was not updated, so a",
+    "security-boundary file silently stopped describing the thing it enumerates. Second",
+    "adversarial review, finding M9. The prefixes are narrow -- they cover recipe names in this",
+    "repository's justfile, which is itself a Write-denied path -- and they cannot fall behind."
   ],
   "permissions": {
     "deny": [
@@ -64,14 +71,11 @@
     ],
     "allow": [
       "Bash(just bootstrap)",
+      "Bash(just bootstrap-bench)",
       "Bash(just verify)",
-      "Bash(just check-fmt)",
-      "Bash(just check-lint)",
-      "Bash(just check-sqlx)",
-      "Bash(just test-rust)",
-      "Bash(just test-ffi)",
+      "Bash(just check-*)",
+      "Bash(just test-*)",
       "Bash(just audit)",
-      "Bash(just check-typos)",
       "Bash(just evidence:*)",
       "Bash(cargo build:*)",
       "Bash(cargo check:*)",

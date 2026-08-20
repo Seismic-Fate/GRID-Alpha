@@ -93,6 +93,40 @@ found in external documentation may not apply. P1-02 should read 0.9 docs, not 0
 **Risk accepted.** Verified after the change: `cargo audit` exit 0, `cargo deny check` exit 0,
 and both `grid-persistence` tests pass against a freshly migrated database.
 
+## §14.2 dependency checklist
+
+`alpha-spec.md` §14.2 (line 1927) requires a maintenance assessment and a Windows compatibility
+check for any dependency change. An earlier revision of this ADR recorded neither; the second
+adversarial review was right that "the advisory is real" does not discharge the checklist. Both
+are recorded here, from evidence rather than assertion.
+
+**Maintenance assessment — sqlx 0.9.**
+- Same maintainers and repository (`launchbadge/sqlx`) as the 0.8 line this project already
+  depended on; not a fork, not a re-homing.
+- 0.9 is the current major line, released ahead of this work package. GRID-Alpha is not moving
+  to a bleeding edge — it is moving off a line whose transitive `rsa` dependency has an
+  advisory with **no fixed version available**, which is the condition that forces a decision.
+- Dependency footprint went **down**, not up: with `--no-default-features --features
+  sqlite,rustls` the MySQL and Postgres drivers, and `rsa` with them, are absent from
+  `Cargo.lock`. Verified — the lockfile resolves 172 crates and contains no `rsa` entry.
+- Surface used by this project is one `query!` macro and one `query` call in a single crate,
+  so the exposure to any 0.9 API change is minimal and fully covered by `check-sqlx`.
+- The CLI is now pinned to `sqlx-cli 0.9.0` in `toolchains/dev-tools.lock`, closing the
+  version-skew hazard this ADR was itself created by (an unpinned CLI resolving 0.9 against a
+  0.8 library).
+
+**Windows compatibility check.** Required because Windows is the production target
+(`final-build-spec.md` §3.2). Demonstrated empirically rather than asserted: `windows-latest`,
+alpha-ci run `32329932430` job `96308538400`, `scripts/verify.ps1 -Scope Full`, **PASSED** in
+32m12s — the full recipe chain including `cargo sqlx prepare --check --workspace`,
+`cargo nextest`, `cargo deny check` and `cargo audit` against sqlx 0.9 on Windows. Re-confirmed
+green on `de3b36c` in run `32332121205`. `sqlx-sqlite` uses the bundled SQLite C library and
+`rustls` rather than a system OpenSSL, so no Windows-specific native dependency is introduced.
+
+**Not assessed:** long-term maintenance trajectory beyond the current release, which no
+snapshot can establish. `cargo audit` in the frozen `audit` recipe is the standing regression
+gate for whatever the trajectory turns out to be.
+
 ## Compliance
 
 - `cargo audit` in the frozen `audit` recipe — regression gate for this advisory.
