@@ -97,10 +97,17 @@ check bodies in `scripts/verify.sh` and `scripts/verify.ps1`, are **never edited
 failure disappear**. Where a recipe cannot pass, the repository changes. Where it cannot be made
 to pass, work stops and escalates.
 
-**Amended three times, each on an owner ruling recorded in its own ADR:** ADR-005 (`--workspace`
+**Amended four times, each on an owner ruling recorded in its own ADR:** ADR-005 (`--workspace`
 on `check-sqlx`), ADR-007 (`test-doc` and `check-guards` added to the chain), ADR-008 (scope
-validation in `verify.sh`). All three *increased* coverage; none relaxed a check. An amendment
-that reduces coverage should be refused outright rather than weighed against these.
+validation in `verify.sh`), ADR-009 (exit-code propagation in `verify.ps1`). All four *increased*
+coverage; none relaxed a check. An amendment that reduces coverage should be refused outright
+rather than weighed against these.
+
+**A pattern worth naming.** Two of the four amendments — 008 and 009 — were defects in the
+*harness around* the checks, not in the checks: an entry point that accepted any scope and ran
+nothing, and a merge gate that discarded every exit code. D5 froze the list of checks and left
+the code deciding whether a check counts unexamined, and both fail-opens survived multiple green
+CI runs and two adversarial reviews. Freezing a check list is not the same as trusting it.
 
 Two consequences accepted deliberately:
 

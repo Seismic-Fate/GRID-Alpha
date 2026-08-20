@@ -106,8 +106,9 @@ committed in `tests/guards/run.sh`, so `just verify` fails if the guard is ever 
 **Easier.** The documented invocation works. A mistyped scope is a loud error instead of a
 false green.
 
-**Harder.** D5 has now been amended three times: ADR-005 (`--workspace`), ADR-007 (`test-doc`,
-`check-guards`), and this one. ADR-007 named the trend and the standard it implies, and that
+**Harder.** D5 has been amended four times: ADR-005 (`--workspace`), ADR-007 (`test-doc`,
+`check-guards`), this one, and ADR-009 (exit-code propagation in `verify.ps1` — found because
+this ADR's guard suite finally made the Windows job print a real verdict). ADR-007 named the trend and the standard it implies, and that
 standard holds here — **all three amendments increased coverage; not one relaxed a check.** An
 amendment that *reduces* coverage should still be refused outright rather than weighed against
 these three. This one is additionally the narrowest of the three: it is the only one that leaves

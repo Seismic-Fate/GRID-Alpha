@@ -25,3 +25,4 @@ Start from `docs/99-templates/template-adr.md`.
 | [006](006-deferred-deliverables.md) | Deferred 8.7/9.2 deliverables | Accepted | 2026-08-20 |
 | [007](007-verify-covers-guards-and-doctests.md) | verify covers guards and doctests | Accepted | 2026-08-20 |
 | [008](008-verify-scope-guard.md) | Validate the scope argument in verify.sh | Accepted | 2026-08-20 |
+| [009](009-verify-ps1-exit-codes.md) | verify.ps1 must propagate native exit codes | Accepted | 2026-08-20 |
