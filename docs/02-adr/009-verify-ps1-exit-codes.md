@@ -103,6 +103,39 @@ amendment that reduces coverage should still be refused outright.
 
 **Inherited.** P1-01 onward gets a Windows gate that behaves like a gate.
 
+## Demonstrated
+
+The fix is verified in both directions, which matters because an all-green run cannot
+distinguish a working `Assert-Ok` from an inert one — both produce identical output when nothing
+fails. That is the same "gate that passes vacuously" argument ADR-002 makes, applied here to the
+fix rather than to the gate.
+
+**Happy path** — run `32382377066` on `a190e71`, `windows-authoritative`: every command passed,
+`verify.ps1` exited 0, and the guard suite reported `38 passed, 0 failed` on Windows.
+
+**Throw path** — run `32403569748` on `c2fc053`, the `ADR-009 self-test` step, which runs the real
+script with a stub `cargo` that exits 7:
+
+```
+[verify] Starting verification scope: Full
+[verify] Formatting...
+D:\a\GRID-Alpha\GRID-Alpha>exit /b 7
+Exception: ...\scripts\verify.ps1:24
+  24 |    throw "[verify] FAILED: $Step (exit $LASTEXITCODE)"
+     |    [verify] FAILED: cargo fmt --all -- --check (exit 7)
+verify.ps1 correctly refused to pass with a failing command: exit 1
+```
+
+`Assert-Ok` fired, named the exact failing command, and the script exited **1**. This is the
+first time in this branch that the §8.11 merge gate has been observed refusing to pass.
+
+**The step around it was wrong on that first run, and the script was not.** `pwsh -File` left
+`$LASTEXITCODE` at 1 — correctly, since the child was asked to fail — and GitHub's `pwsh`
+wrapper exits a step with whatever `$LASTEXITCODE` holds at the end, so the step printed its
+success message and then reported failure. Fixed by ending the step with an explicit `exit 0`.
+Recorded because the distinction is the whole point: a verification step that deliberately runs
+a command it expects to fail must state its own verdict rather than inherit one.
+
 ## Compliance
 
 - `grep -c 'Assert-Ok "' scripts/verify.ps1` must equal the number of native commands (16 today).

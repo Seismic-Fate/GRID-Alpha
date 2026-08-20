@@ -162,6 +162,16 @@ jobs:
             throw "verify.ps1 exited 0 with a FAILING cargo. ADR-009's fix is inert and the merge gate cannot fail."
           }
           Write-Host "verify.ps1 correctly refused to pass with a failing command: exit $rc"
+          # Set our own verdict. `pwsh -File` left $LASTEXITCODE at 1 -- deliberately, since we
+          # ASKED verify.ps1 to fail -- and GitHub's pwsh wrapper exits the step with whatever
+          # $LASTEXITCODE holds at the end. So the first run of this step asserted success and
+          # then reported failure: run 32403569748, where the log reads "verify.ps1 correctly
+          # refused to pass" immediately above "##[error]Process completed with exit code 1".
+          #
+          # A step that deliberately runs a command it EXPECTS to fail must state its own
+          # result, never inherit one from the subprocess. The `throw` above still fails the
+          # step, because it terminates before reaching this line.
+          exit 0
 
       - name: Bootstrap
         shell: pwsh
