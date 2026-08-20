@@ -15,7 +15,7 @@ if ($Scope -eq "Full" -or $Scope -eq "Changed") {
     cargo clippy --all-targets --all-features -- -D warnings
 
     Write-Host "[verify] SQLx offline cache..."
-    cargo sqlx prepare --check -- --lib
+    cargo sqlx prepare --check --workspace -- --lib
 
     Write-Host "[verify] Rust tests..."
     cargo nextest run --workspace

@@ -3,14 +3,20 @@ set shell := ["bash", "-cu"]
 default:
     just verify
 
-# Bootstrap dev tools (run once per fresh environment)
+# Bootstrap dev tools and the local development database.
+# Run once per fresh environment. NOT a verify recipe: the seven recipes under
+# `verify` are a frozen contract (docs/02-adr/001-repo-bootstrap-decisions.md D5).
 bootstrap:
     cargo install cargo-nextest --locked
     cargo install sqlx-cli --locked
     cargo install cargo-deny --locked
     cargo install cargo-audit --locked
     cargo install typos-cli --locked
-    cargo install just --locked
+    cargo install hyperfine --locked
+    cargo install cargo-mutants --locked
+    # Local SQLite development database for the compile-time query cache (ADR-002).
+    sqlx database create
+    sqlx migrate run
 
 # Full verification suite (Linux smoke)
 verify:
@@ -29,7 +35,7 @@ check-lint:
     cargo clippy --all-targets --all-features -- -D warnings
 
 check-sqlx:
-    cargo sqlx prepare --check -- --lib
+    cargo sqlx prepare --check --workspace -- --lib
 
 test-rust:
     cargo nextest run --workspace

@@ -12,7 +12,7 @@ if [[ "$SCOPE" == "full" || "$SCOPE" == "changed" ]]; then
     cargo clippy --all-targets --all-features -- -D warnings
 
     echo "[verify] SQLx offline cache..."
-    cargo sqlx prepare --check -- --lib
+    cargo sqlx prepare --check --workspace -- --lib
 
     echo "[verify] Rust tests..."
     cargo nextest run --workspace
