@@ -66,13 +66,30 @@ if [[ -n "$url" ]]; then
     fi
 fi
 
-# SQLX_OFFLINE must agree with whether the committed cache actually exists.
-if [[ "${SQLX_OFFLINE:-}" == "true" && ! -d .sqlx ]]; then
-    fail "SQLX_OFFLINE=true but .sqlx/ does not exist.
-       The query! macro will read a cache that is not there. Unset SQLX_OFFLINE for local
-       work, or generate the cache with 'cargo sqlx prepare'."
+# SQLX_OFFLINE, resolved the way the query! macro resolves it: the process environment wins,
+# and .env supplies the value when the environment is silent (sqlx reads .env via dotenvy at
+# macro-expansion time; cargo itself does not). Reporting only the shell's view printed
+# "<unset>" for a repository whose committed .env sets it to true -- true about the shell,
+# misleading about the build.
+if [[ -n "${SQLX_OFFLINE:-}" ]]; then
+    offline_src="environment"
+    offline="$SQLX_OFFLINE"
+elif [[ -f .env ]] && grep -qE '^SQLX_OFFLINE=' .env; then
+    offline_src=".env"
+    offline="$(grep -m1 -E '^SQLX_OFFLINE=' .env | cut -d= -f2-)"
 else
-    echo "check-env-contract: OK SQLX_OFFLINE=${SQLX_OFFLINE:-<unset>}, .sqlx/ $([[ -d .sqlx ]] && echo present || echo absent)"
+    offline_src="unset"
+    offline=""
+fi
+
+# SQLX_OFFLINE must agree with whether the committed cache actually exists.
+if [[ "$offline" == "true" && ! -d .sqlx ]]; then
+    fail "SQLX_OFFLINE=true but .sqlx/ does not exist.
+       The query! macro will read a cache that is not there. Generate it with
+       'cargo sqlx prepare' against a live database (see ADR-002). SQLX_OFFLINE=true is the
+       committed default and should stay set; 'cargo sqlx prepare' overrides it itself."
+else
+    echo "check-env-contract: OK SQLX_OFFLINE=${offline:-<unset>} (from $offline_src), .sqlx/ $([[ -d .sqlx ]] && echo present || echo absent)"
 fi
 
 [[ "$status" -eq 0 ]] || echo "check-env-contract: see docs/02-adr/002-sqlx-offline-cache.md" >&2

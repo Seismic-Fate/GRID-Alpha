@@ -49,8 +49,12 @@ Ridge, RAPM (sparse CG), Kalman (online + RTS), Empirical-Bayes, Affine, Gradien
 - **Verification recipes are a frozen contract.** Make the repository satisfy them. Never edit
   a recipe to make a failure disappear — if one cannot pass, stop and report.
   `scripts/check-verify-parity.sh` keeps `justfile` and `scripts/verify.sh` in lockstep.
-- Requires `DATABASE_URL=sqlite:target/grid-dev.db` and `SQLX_OFFLINE` unset locally; see
-  `docs/02-adr/002-sqlx-offline-cache.md`. Checked by `scripts/check-env-contract.sh`.
+- Requires `DATABASE_URL=sqlite:target/grid-dev.db` and `SQLX_OFFLINE=true`, both supplied by
+  the committed `.env`; see `docs/02-adr/002-sqlx-offline-cache.md`. Offline is the default so a
+  fresh clone compiles against the committed `.sqlx` cache with no database;
+  `cargo sqlx prepare` overrides it to regenerate. `scripts/check-env-contract.sh` checks that
+  `DATABASE_URL` is well-formed and that `SQLX_OFFLINE` agrees with whether `.sqlx/` exists — it
+  does not assert which value you should be using.
 - Every work package needs evidence manifest before claiming done.
 - No deleting tests to pass. No hand-editing generated FFI code.
 - No post-lock data in training features. No competitor data in model training.

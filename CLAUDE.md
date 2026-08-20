@@ -30,8 +30,12 @@ recipe, weaken a lint, or skip a check to make a failure disappear — if a reci
 stop and report. `scripts/check-verify-parity.sh` keeps `justfile` and `scripts/verify.sh` in
 lockstep.
 
-Requires `DATABASE_URL=sqlite:target/grid-dev.db` and `SQLX_OFFLINE` unset for local work; see
-`docs/02-adr/002-sqlx-offline-cache.md`. `scripts/check-env-contract.sh` verifies this.
+Requires `DATABASE_URL=sqlite:target/grid-dev.db` and `SQLX_OFFLINE=true`, both supplied by the
+committed `.env`; see `docs/02-adr/002-sqlx-offline-cache.md`. Offline is the default so a fresh
+clone compiles against the committed `.sqlx` cache with no database. `cargo sqlx prepare`
+overrides it when you need to regenerate the cache. `scripts/check-env-contract.sh` checks that
+`DATABASE_URL` is well-formed and that `SQLX_OFFLINE` agrees with whether `.sqlx/` exists — it
+does not, and cannot, assert which value you should be using.
 
 ## Architecture non-negotiables
 
