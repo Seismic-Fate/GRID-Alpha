@@ -1,0 +1,112 @@
+# GRID-Alpha CI skeleton — P1-00.
+#
+# Two jobs, per the P1-00 acceptance criteria:
+#   linux-smoke           fast feedback  (just verify)
+#   windows-authoritative merge gate     (scripts/verify.ps1 -Scope Full)
+#
+# scripts/verify.ps1 is authoritative for merge and release because the production target is
+# Windows (alpha-spec.md 8.11). The Linux job cannot substitute for it.
+#
+# No third-party actions beyond actions/checkout: this file is a security boundary, and every
+# action added here is supply-chain surface (alpha-spec.md 14.1, 14.2). Tools are installed
+# with `cargo install --locked`. That is slow without caching; caching is deferred to P1-11,
+# where Swatinem/rust-cache can be evaluated as a deliberate supply-chain decision.
+
+name: alpha-ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: alpha-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # ADR-002: SQLite is a file, so CI needs no service container.
+  DATABASE_URL: sqlite:target/grid-dev.db
+
+jobs:
+  guards:
+    name: repository guards
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # diff-based guards need history
+
+      - name: Shell scripts parse (ADR-004 regression gate)
+        run: |
+          for f in scripts/*.sh; do bash -n "$f" || exit 1; done
+          echo "all shell scripts parse"
+
+      - name: Migrations are append-only
+        run: ./scripts/check-migrations.sh "origin/${{ github.base_ref || 'main' }}"
+
+      - name: No secrets in the diff
+        run: ./scripts/check-secrets.sh "origin/${{ github.base_ref || 'main' }}"
+
+      - name: Changes trace to a work package or ADR
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: ./scripts/check-traceability.sh "origin/${{ github.base_ref || 'main' }}"
+
+      - name: Authority documents have not forked
+        run: ./scripts/check-authority-sync.sh
+
+      - name: justfile and verify.sh agree
+        run: ./scripts/check-verify-parity.sh
+
+      - name: Environment contract
+        run: ./scripts/check-env-contract.sh
+
+  linux-smoke:
+    name: linux-smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dev toolchain
+        run: |
+          cargo install just --locked
+          cargo install cargo-nextest --locked
+          cargo install sqlx-cli --locked --no-default-features --features sqlite,rustls
+          cargo install cargo-deny --locked
+          cargo install cargo-audit --locked
+          cargo install typos-cli --locked
+
+      - name: Bootstrap (creates the local SQLite development database)
+        run: just bootstrap
+
+      - name: just verify
+        run: just verify
+
+  windows-authoritative:
+    name: windows-authoritative
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dev toolchain
+        shell: pwsh
+        run: |
+          cargo install just --locked
+          cargo install cargo-nextest --locked
+          cargo install sqlx-cli --locked --no-default-features --features sqlite,rustls
+          cargo install cargo-deny --locked
+          cargo install cargo-audit --locked
+          cargo install typos-cli --locked
+
+      - name: Bootstrap
+        shell: pwsh
+        run: just bootstrap
+
+      - name: Authoritative verification
+        shell: pwsh
+        run: .\scripts\verify.ps1 -Scope Full
