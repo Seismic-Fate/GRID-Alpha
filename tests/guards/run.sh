@@ -88,6 +88,31 @@ d="$(new_repo secrets-nosecret)"
 printf 'ghp_%s # nosecret\n' "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC" >> "$d/scripts/secret-patterns.txt"
 expect 0 "a '# nosecret' line in the pattern file is exempt" "$d" ./scripts/check-secrets.sh
 
+# THE WINDOWS FAIL-OPEN. On the merge-authoritative job both ls-files scan loops examined ZERO
+# of the listed files, so the guard printed "OK no secret patterns found" over a committed
+# ghp_ token -- and verify.ps1 discarded the non-zero exit, so the job went green. A carriage
+# return on a path is enough to do it: -f fails, the file is skipped, the corpus stays empty.
+d="$(new_repo secrets-crlf-paths)"
+printf 'token = "ghp_%s"\n' "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD" > "$d/leak.txt"
+git -C "$d" add -A; git -C "$d" commit -qm "P1-00 add"
+sed -i 's/$/\r/' "$d/scripts/secret-patterns.txt"   # CRLF pattern file, as Windows checks out
+expect 1 "a CRLF pattern file does not disarm the scanner" "$d" ./scripts/check-secrets.sh
+
+# An empty scan is not a clean tree. Whatever the platform-specific cause, the scanner must
+# refuse to report OK when git listed files and it opened none of them.
+#
+# The fixture carries NO secret on purpose. With one, the case would exit 1 whether or not the
+# empty-scan guard exists, and would pass for the wrong reason -- the exact failure this round
+# is about. Here the ONLY thing that can produce exit 1 is the guard.
+d="$(new_repo secrets-empty-scan)"
+expect 0 "control: the unmodified scanner reports a clean tree here" "$d" ./scripts/check-secrets.sh
+# Break path resolution the way the Windows job did: every listed path gains a carriage return
+# AFTER the scanner's own CR-stripping, so -f fails and nothing is opened.
+sed -i 's|^        f="\${f%\$.\\r.}"|        f="${f}\\r"|' "$d/scripts/check-secrets.sh"
+grep -q 'f="${f}\\r"' "$d/scripts/check-secrets.sh" \
+    || bad "empty-scan fixture did not apply" "sed did not patch the copied scanner"
+expect 1 "zero files scanned over a non-empty tree fails closed" "$d" ./scripts/check-secrets.sh
+
 # minor 3: the deny patterns require realistic token lengths, so a truncated or short test
 # token sits in the gap. The warn tier reports it without failing the build.
 d="$(new_repo secrets-warn)"

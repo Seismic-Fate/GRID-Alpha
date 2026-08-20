@@ -37,6 +37,25 @@ die() { echo "check-secrets: FAIL $*" >&2; exit 1; }
 plus() { grep -E '^\+' | grep -vE '^\+\+\+' || true; }   # added lines only; no match is fine
 
 added=""
+scanned=0
+
+# Append every readable text file in a newline-separated list to the scan corpus.
+#
+# `f="${f%$'\r'}"`: a carriage return on a path silently fails the -f test, so the file is
+# skipped and the scan reports a clean tree over content it never opened. Both ls-files loops
+# had this shape and both examined zero files on the Windows merge gate.
+scan_files() {
+    local list="$1" f
+    while IFS= read -r f; do
+        f="${f%$'\r'}"
+        [[ -z "$f" ]] && continue
+        case "$f" in scripts/check-secrets.sh|scripts/secret-patterns.txt) continue ;; esac
+        [[ -f "$f" ]] || continue
+        grep -Iq . "$f" 2>/dev/null || continue    # skip binaries
+        added+=$'\n'"$(sed 's/^/+/' "$f")"
+        scanned=$((scanned + 1))
+    done <<< "$list"
+}
 
 if git rev-parse --verify --quiet "${BASE}^{commit}" >/dev/null; then
     mode="diff vs $BASE"
@@ -48,13 +67,16 @@ else
     # tracked. Scanning less than the diff would be a silent downgrade of the control.
     mode="FULL tracked tree (base '$BASE' unresolvable)"
     files="$(git ls-files)" || die "git ls-files failed — refusing to report a clean scan"
-    while IFS= read -r f; do
-        [[ -z "$f" ]] && continue
-        case "$f" in scripts/check-secrets.sh|scripts/secret-patterns.txt) continue ;; esac
-        [[ -f "$f" ]] || continue
-        grep -Iq . "$f" 2>/dev/null || continue    # skip binaries
-        added+=$'\n'"$(sed 's/^/+/' "$f")"
-    done <<< "$files"
+    scan_files "$files"
+    listed=$(printf '%s\n' "$files" | grep -c . || true)
+    # A scan that examined nothing is not a clean tree, it is a broken scanner. On the Windows
+    # merge gate this loop silently examined ZERO of the listed files and the guard printed OK
+    # over a committed ghp_ token; only the guard suite caught it, and only because verify.ps1
+    # was fixed to propagate exit codes. Never infer "clean" from an empty scan again.
+    if [[ "$listed" -gt 0 && "$scanned" -eq 0 ]]; then
+        die "git ls-files listed $listed path(s) but ZERO were scanned.
+       The scanner examined nothing; that is not a clean tree. Refusing to report OK."
+    fi
 fi
 
 # Staged and unstaged work, so a secret is caught before it is ever committed.
@@ -71,13 +93,7 @@ done
 
 # Untracked files are in no diff, but a new file full of secrets is exactly this guard's job.
 untracked="$(git ls-files --others --exclude-standard)" || die "git ls-files --others failed"
-while IFS= read -r f; do
-    [[ -z "$f" ]] && continue
-    case "$f" in scripts/check-secrets.sh|scripts/secret-patterns.txt) continue ;; esac
-    [[ -f "$f" ]] || continue
-    grep -Iq . "$f" 2>/dev/null || continue
-    added+=$'\n'"$(sed 's/^/+/' "$f")"
-done <<< "$untracked"
+scan_files "$untracked"
 
 # Two tiers, separated by the #WARN# line in the pattern file. Deny fails; warn reports.
 # The warn tier exists because the deny patterns require realistic token lengths, so a
@@ -88,6 +104,7 @@ status=0
 warned=0
 tier="deny"
 while IFS= read -r pattern; do
+    pattern="${pattern%$'\r'}"   # a CRLF pattern file would append \r to every regex
     if [[ "$pattern" == "#WARN#" ]]; then tier="warn"; continue; fi
     [[ -z "$pattern" || "$pattern" == \#* ]] && continue
     if hits="$(printf '%s\n' "$added" | grep -nE -e "$pattern" || true)"; [[ -n "$hits" ]]; then
@@ -104,7 +121,9 @@ while IFS= read -r pattern; do
 done < "$PATTERNS"
 
 if [[ "$status" -eq 0 ]]; then
-    echo "check-secrets: OK no secret patterns found ($mode)$([[ "$warned" -gt 0 ]] && echo ", $warned warn-tier match(es) above")"
+    # The file count is part of the verdict: "OK" over an empty corpus is what the Windows
+    # fail-open looked like, and an unqualified OK gives a reader no way to notice.
+    echo "check-secrets: OK no secret patterns found ($mode; $scanned whole file(s) read)$([[ "$warned" -gt 0 ]] && echo ", $warned warn-tier match(es) above")"
 else
     echo "check-secrets: secrets must never be committed (alpha-spec.md 14.1)." >&2
     echo "  If this is a false positive, narrow the pattern in $PATTERNS — never delete the check." >&2

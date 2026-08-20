@@ -11,6 +11,13 @@
 
 *.sh            text eol=lf
 
+# Data files the shell guards PARSE, not just read. secret-patterns.txt is one regex per line;
+# checked out CRLF under core.autocrlf=true (the GitHub Windows runner default) every pattern
+# gains a trailing \r and matches nothing. The scanner now strips it defensively, but the file
+# should not arrive broken in the first place. Same narrow scope as *.sh: these are executable
+# inputs, not prose.
+scripts/secret-patterns.txt  text eol=lf
+
 # PowerShell is Windows-native and its committed bytes are already CRLF. Marked -text so git
 # stores them verbatim: `text eol=crlf` would normalize the INDEX to LF, rewriting every line
 # of scripts/verify.ps1 in the diff for no functional gain (same reasoning as ADR-004's
