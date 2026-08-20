@@ -20,7 +20,10 @@ for f in "$JUSTFILE" "$VERIFY_SH"; do
 done
 
 # tr -d '\r': the justfile is still CRLF by design (ADR-004), so strip CR before comparing.
-norm() { tr -d '\r' | sed -e 's/[[:space:]]\+/ /g' -e 's/^ //' -e 's/ $//' | grep -vE '^$' | sort -u; }
+#
+# ORDER-SENSITIVE and duplicate-sensitive: an earlier revision ended in `sort -u`, so a
+# reordered or duplicated step was invisible. Review finding "minor 5".
+norm() { tr -d '\r' | sed -e 's/[[:space:]]\+/ /g' -e 's/^ //' -e 's/ $//' | grep -vE '^$'; }
 
 # Recipes the `verify` chain invokes, then the commands inside each of them.
 targets="$(awk '
@@ -39,8 +42,13 @@ just_cmds="$(for t in $targets; do
     ' "$JUSTFILE"
 done | norm)"
 
-# Commands in verify.sh: cargo/typos invocations only (skip echo, control flow).
-sh_cmds="$(grep -E '^[[:space:]]*(cargo|typos)\b' "$VERIFY_SH" | norm)"
+# Every command in verify.sh, not just cargo/typos: an earlier revision matched only those two
+# binaries, so a step invoking anything else was silently outside the comparison entirely.
+# Excludes comments, blanks, echo, and shell scaffolding. Review finding "minor 5".
+sh_cmds="$(grep -vE '^[[:space:]]*(#|$)' "$VERIFY_SH" \
+           | grep -vE '^[[:space:]]*(echo|set|if|fi|then|else|elif|SCOPE=|exit)\b' \
+           | grep -vE '^#!' \
+           | grep -E '^[[:space:]]+[a-zA-Z._/]' | norm)"
 
 if diff_out="$(diff <(printf '%s\n' "$just_cmds") <(printf '%s\n' "$sh_cmds"))"; then
     n=$(printf '%s\n' "$just_cmds" | grep -c . || true)

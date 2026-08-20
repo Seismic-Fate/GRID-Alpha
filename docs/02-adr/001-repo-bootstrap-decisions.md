@@ -110,6 +110,27 @@ scripts). It is cross-platform without a POSIX shell layer, which matters becaus
 the production target and `verify.ps1` is authoritative for merge. Recipes are plain commands
 rather than build rules, so Make's dependency graph buys nothing here.
 
+### On amending a work package mid-implementation
+
+Adversarial review (finding M5) objected that P1-00's non-goals were rewritten inside the same
+PR, by the implementer, to permit work those non-goals forbade. The objection is well taken and
+is recorded here rather than argued away.
+
+The mechanism used was: stop at the boundary, put the conflict to the owner as an explicit
+question naming the alternatives, and amend only on their ruling — which is what §8.9 step 4
+and §1.5's "produce a decision request" prescribe. The amendment note in the work package is
+dated and states what changed and why.
+
+What is genuinely uncomfortable is that the implementer both raised the question and wrote the
+amendment, and that a reader encountering the work package later sees the amended text as
+though it were the original scope. Two mitigations are now in place: the amendment note is a
+separate dated section rather than an edit to the original text, and this ADR records the
+mechanism so the precedent is visible rather than tacit.
+
+**A work package should not be the artifact that authorizes exceeding itself.** For P1-01
+onward, a scope change of this size should produce a decision request the owner records
+themselves, or a new work package — not an amendment note written by the implementer.
+
 ### Scope amendments to P1-00
 Recorded in the work package as a dated amendment note:
 

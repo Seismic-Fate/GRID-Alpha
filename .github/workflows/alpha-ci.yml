@@ -46,6 +46,9 @@ jobs:
           for f in scripts/*.sh; do bash -n "$f" || exit 1; done
           echo "all shell scripts parse"
 
+      - name: Guard-script behaviour tests
+        run: ./tests/guards/run.sh
+
       - name: Migrations are append-only
         run: ./scripts/check-migrations.sh "origin/${{ github.base_ref || 'main' }}"
 

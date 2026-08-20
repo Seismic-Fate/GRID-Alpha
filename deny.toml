@@ -8,6 +8,10 @@
 # A known vulnerability fails the build. No exceptions list: add one only with a written
 # justification and Security/Release owner approval (alpha-spec.md 1.4, 14.2).
 yanked = "deny"
+# Explicit rather than relying on cargo-deny defaults, so a version bump of the tool cannot
+# silently relax the policy. Review finding "minor 7".
+unmaintained = "all"
+unsound = "all"
 ignore = []
 
 [licenses]

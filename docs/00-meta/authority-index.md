@@ -42,8 +42,8 @@ vault instead, ratified by the product owner and recorded in ADR-001. Spec names
 | `docs/contracts/` | `docs/03-contracts/` | created by P1-01 |
 | `docs/model-specs/` | `docs/05-model-specs/` | created by P1-06 |
 | `docs/templates/` | `docs/99-templates/` | exists |
-| `docs/sessions/` | `docs/06-sessions/` | created on first session log |
-| `docs/runbooks/`, `docs/model-cards/`, `docs/traceability/` | not yet created | P1-11 |
+| `docs/sessions/` | `docs/06-sessions/` | canonical for session logs and reviews. `docs/05-sessions/` is **not** a valid path — 05 is model-specs (review finding "minor 8") |
+| `docs/runbooks/`, `docs/model-cards/`, `docs/traceability/` | not yet created | deferred — see [ADR-006](../02-adr/006-deferred-deliverables.md) |
 
 ## Canonical verification
 

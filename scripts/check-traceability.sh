@@ -4,7 +4,14 @@
 # alpha-spec.md 9.4: "Every merged non-trivial change is linked to an approved work package
 # and evidence manifest." 12.8 requires the PR body to carry the work-package link.
 #
-# Looks for a reference in the commit messages in range, or in $PR_BODY / $PR_BODY_FILE.
+# PER-FILE, not per-PR. An earlier revision passed the whole change set if a single token like
+# "P1-00" appeared anywhere in the commit range -- a PR touching 200 unrelated files passed on
+# one commit-subject prefix, while the manifest recorded the check as satisfied. Adversarial
+# review of PR #1 caught that. Each non-trivial path must now be accounted for individually.
+#
+# A path is accounted for when it is named, or covered by a named directory prefix, in a
+# referenced work package or ADR. Referenced documents are those cited in the commit range or
+# $PR_BODY / $PR_BODY_FILE.
 #
 # Usage: check-traceability.sh [base-ref]     (default: origin/main)
 set -euo pipefail
@@ -13,9 +20,11 @@ ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 
 BASE="${1:-${BASE_REF:-origin/main}}"
+die() { echo "check-traceability: FAIL $*" >&2; exit 1; }
 
-if ! git rev-parse --verify --quiet "$BASE" >/dev/null; then
-    echo "check-traceability: SKIP base ref '$BASE' not available"
+if ! git rev-parse --verify --quiet "${BASE}^{commit}" >/dev/null; then
+    echo "check-traceability: SKIP (NOT VERIFIED) base ref '$BASE' unresolvable, so no change" \
+         "set could be derived. CI always has a base; a local skip is not evidence." >&2
     exit 0
 fi
 
@@ -23,15 +32,16 @@ fi
 is_trivial() {
     case "$1" in
         docs/99-templates/*|.github/*|*.lock|Cargo.lock|.sqlx/*|\
-        .gitignore|.gitattributes|*/.gitkeep|.gitkeep) return 0 ;;
+        .gitignore|.gitattributes|*/.gitkeep|.gitkeep|.ai/evidence/*) return 0 ;;
         *) return 1 ;;
     esac
 }
 
-changed="$( { git diff --name-only "$BASE"...HEAD || true
-              git diff --name-only || true
-              git diff --cached --name-only || true
-              git ls-files --others --exclude-standard || true; } | sort -u | grep -vE '^$' || true)"
+changed="$( { git diff --name-only "$BASE"...HEAD || die "git diff failed"
+              git diff --name-only        || die "git diff (unstaged) failed"
+              git diff --cached --name-only || die "git diff --cached failed"
+              git ls-files --others --exclude-standard || die "git ls-files --others failed"
+            } | sort -u | grep -vE '^$' || true)"
 
 nontrivial=()
 while IFS= read -r f; do
@@ -44,25 +54,60 @@ if [[ ${#nontrivial[@]} -eq 0 ]]; then
     exit 0
 fi
 
-# Gather every place a reference may legitimately appear.
+# Which authority documents does this change set cite?
 haystack="$(git log --format='%s%n%b' "$BASE"..HEAD 2>/dev/null || true)"
 haystack+=$'\n'"${PR_BODY:-}"
 [[ -n "${PR_BODY_FILE:-}" && -f "${PR_BODY_FILE:-}" ]] && haystack+=$'\n'"$(cat "$PR_BODY_FILE")"
 
-REF_RE='docs/01-work-packages/[A-Za-z0-9._-]+|docs/02-adr/[A-Za-z0-9._-]+|P1-[0-9]{2}|ADR-[0-9]{3}'
+refs="$(printf '%s' "$haystack" \
+        | grep -oE 'docs/01-work-packages/[A-Za-z0-9._-]+\.md|docs/02-adr/[0-9]{3}[A-Za-z0-9._-]*\.md|P1-[0-9]{2}|ADR-[0-9]{3}' \
+        | sort -u || true)"
+[[ -n "$refs" ]] || die "no work-package or ADR reference found in the commit range or PR_BODY.
+  Reference the governing document, e.g. \"P1-00: add authority index\".
+  Required by alpha-spec.md 9.4 and 12.8."
 
-if refs="$(printf '%s' "$haystack" | grep -oE "$REF_RE" | sort -u)"; [[ -n "$refs" ]]; then
-    echo "check-traceability: OK ${#nontrivial[@]} non-trivial change(s) traced to:"
-    printf '%s\n' "$refs" | sed 's/^/    /'
-    exit 0
+# Resolve bare IDs (P1-00, ADR-001) to the documents they name, then read them all.
+docs=()
+while IFS= read -r r; do
+    [[ -z "$r" ]] && continue
+    case "$r" in
+        docs/*) [[ -f "$r" ]] && docs+=("$r") ;;
+        P1-*)   for f in docs/01-work-packages/*"$(tr '[:upper:]' '[:lower:]' <<< "$r")"*; do
+                    [[ -f "$f" ]] && docs+=("$f"); done ;;
+        ADR-*)  for f in docs/02-adr/"${r#ADR-}"*.md; do [[ -f "$f" ]] && docs+=("$f"); done ;;
+    esac
+done <<< "$refs"
+[[ ${#docs[@]} -gt 0 ]] || die "referenced documents ($(tr '\n' ' ' <<< "$refs")) do not exist on disk."
+
+corpus="$(cat "${docs[@]}" 2>/dev/null)" || die "could not read referenced documents"
+
+# A path is covered if it is named exactly, or if an ancestor is named AS A DIRECTORY.
+#
+# The directory form must end at the slash — followed by whitespace, a closing delimiter, or a
+# glob. Otherwise "src/" matches as a substring of "src/covered.rs" and every sibling in that
+# directory is silently covered by one named file. tests/guards/run.sh caught exactly that.
+covered() {
+    local p="$1"
+    grep -qF -- "$p" <<< "$corpus" && return 0
+    local d; d="$(dirname "$p")"
+    while [[ "$d" != "." && "$d" != "/" ]]; do
+        grep -qE -- "(^|[^A-Za-z0-9._/-])${d}/([[:space:]*\`,\")]|$)" <<< "$corpus" && return 0
+        d="$(dirname "$d")"
+    done
+    return 1
+}
+
+untraced=()
+for f in "${nontrivial[@]}"; do covered "$f" || untraced+=("$f"); done
+
+if [[ ${#untraced[@]} -gt 0 ]]; then
+    echo "check-traceability: FAIL ${#untraced[@]} of ${#nontrivial[@]} non-trivial path(s) are not" \
+         "named, and have no named parent directory, in any referenced document:" >&2
+    printf '%s\n' "${untraced[@]}" | head -15 | sed 's/^/    /' >&2
+    [[ ${#untraced[@]} -gt 15 ]] && echo "    ... and $(( ${#untraced[@]} - 15 )) more" >&2
+    echo "  referenced: $(tr '\n' ' ' <<< "$refs")" >&2
+    echo "  Add the path to the work package's Scope section, or record it in an ADR." >&2
+    exit 1
 fi
 
-echo "check-traceability: FAIL ${#nontrivial[@]} non-trivial change(s) with no work-package or ADR reference" >&2
-printf '%s\n' "${nontrivial[@]}" | head -10 | sed 's/^/    /' >&2
-[[ ${#nontrivial[@]} -gt 10 ]] && echo "    ... and $(( ${#nontrivial[@]} - 10 )) more" >&2
-cat >&2 <<'HINT'
-  Reference the governing work package or ADR in a commit message or the PR body, e.g.
-    "P1-00: add authority index"      or      "docs/02-adr/001-repo-bootstrap-decisions.md"
-  Traceability is required by alpha-spec.md 9.4 and 12.8.
-HINT
-exit 1
+echo "check-traceability: OK all ${#nontrivial[@]} non-trivial path(s) traced to: $(tr '\n' ' ' <<< "$refs")"

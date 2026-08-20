@@ -53,11 +53,33 @@ This is deliberately the *minimal* change. Feature narrowing was not adopted: it
 the advisory, and dropping sqlx's default `json` feature could pre-empt P1-02's raw-data
 retention design (`final-build-spec.md` §8.3).
 
-`alpha-spec.md` §14.2 requires that major upgrades be their own work package and not be hidden
-inside feature work. That rule is honoured by disclosure rather than by deferral: the upgrade
-was escalated to the owner with the advisory, both remedies, and their measured results, and
-approved on the record before the change was kept. The intent of §14.2 — no silent upgrades —
-is satisfied; a separate package was judged not worth blocking P1-00 and every package behind it.
+### Relationship to §14.2 — corrected after review
+
+`alpha-spec.md` §14.2 states: *"Major version upgrades are separate work packages and cannot be
+hidden inside feature changes."*
+
+An earlier revision of this ADR argued that "the intent of §14.2 — no silent upgrades — is
+satisfied" by disclosure. **That reasoning is withdrawn.** Adversarial review of PR #1 (finding
+M4) correctly objected: disclosure is not the rule, separation is, and an ADR reinterpreting a
+level-2 requirement whenever compliance is costly is exactly what `docs/02-adr/README.md`
+forbids when it says an ADR "can never override either specification". Left standing, that
+reasoning would license every later package to argue its way around any spec clause.
+
+What actually authorizes this change is narrower and does not depend on reinterpretation:
+
+**This is an owner deviation from §14.2, not a satisfaction of it.** §1.5 makes resolving
+conflicts and absent decisions the Product/Architecture owner's role. The conflict — a security
+advisory with no fixed upgrade available, reachable only through a dependency this package must
+introduce to satisfy a frozen verification recipe — was put to the owner with the advisory, both
+tested remedies and their measured results, and the alternatives including a separate P1-00b
+package. The owner chose to keep it here.
+
+So §14.2 is **deviated from, on the owner's authority, with the deviation recorded** — the same
+mechanism ADR-001 D3 uses for §8.7 and ADR-006 uses for the §8.7/§9.2 deferrals. It is not the
+ADR that overrides the spec; it is the owner, and the ADR is only the record.
+
+The distinction matters for what P1-01…P1-11 inherit: a deviation needs an owner ruling on a
+specific question, not a well-written rationale.
 
 ## Consequences
 

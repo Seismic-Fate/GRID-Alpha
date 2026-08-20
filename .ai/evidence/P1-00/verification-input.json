@@ -3,7 +3,7 @@
     "commands": [
       {
         "command": "just verify",
-        "environment": "Linux; DATABASE_URL=sqlite:target/grid-dev.db, SQLX_OFFLINE unset",
+        "environment": "Linux. The session inherits a stale DATABASE_URL and SQLX_OFFLINE=true from the environment definition, which cannot be changed mid-session; the canonical run therefore overrode BOTH per-command with `env -u SQLX_OFFLINE -u DATABASE_URL`, letting the committed .env supply DATABASE_URL=sqlite:target/grid-dev.db and SQLX_OFFLINE=true. Recorded precisely because an earlier revision said only 'SQLX_OFFLINE unset', which read as contradicting the known limitation (review finding 'minor 2').",
         "exit_status": 0,
         "summary": "All 7 frozen recipes passed against 18c8fb72b2e7, .env supplying DATABASE_URL=sqlite:target/grid-dev.db and SQLX_OFFLINE=true. cargo nextest: 2 tests run, 2 passed, 0 skipped.",
         "canonical": true,
@@ -161,7 +161,7 @@
   },
   "known_limitations": [
     "scripts/verify.ps1 -Scope Full has NOT been executed. It is authoritative for merge (8.11) and runs only in the windows-authoritative CI job.",
-    "check-env-contract.sh fails in this session: the stale DATABASE_URL and SQLX_OFFLINE are baked into the running process and cannot be changed mid-session. Requires the owner's environment fix plus a new session. CI is unaffected (GitHub runners set neither); the alpha-ci guards job runs it.",
+    "The grid-alpha-opus5 environment presets a stale DATABASE_URL and SQLX_OFFLINE that are baked into the running process and cannot be changed mid-session; commands override them explicitly. CI is unaffected -- NOT because runners set nothing (the workflow does set DATABASE_URL at env: scope for every job) but because the value it sets is the correct one. An earlier revision gave the wrong reason (review finding 'minor 3').",
     "-Scope Changed is still unimplemented in verify.sh and verify.ps1; both treat 'changed' as 'full'. 8.11 cites it as canonical. Deferred to P1-11 (ADR-001 D5).",
     "The justfile and scripts/verify.sh remain duplicate implementations; unification is barred by D5, so drift is guarded by check-verify-parity.sh instead.",
     "Cargo.toml, ai-toolchain.lock, rust-toolchain.toml and justfile retain CRLF. They parse correctly; repo-wide normalization is deferred to P1-11 (ADR-004).",

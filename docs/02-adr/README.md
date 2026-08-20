@@ -22,3 +22,4 @@ Start from `docs/99-templates/template-adr.md`.
 | [003](003-sqlx-0-9-upgrade.md) | Upgrade sqlx 0.8 to 0.9 | Accepted | 2026-08-20 |
 | [004](004-line-ending-policy.md) | Line-ending policy | Accepted | 2026-08-20 |
 | [005](005-check-sqlx-workspace-flag.md) | Amend check-sqlx with --workspace | Accepted | 2026-08-20 |
+| [006](006-deferred-deliverables.md) | Deferred 8.7/9.2 deliverables | Accepted | 2026-08-20 |

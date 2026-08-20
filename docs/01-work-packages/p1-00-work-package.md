@@ -138,7 +138,18 @@ just verify
 Not applicable.
 
 ## Migration and rollback
-Not applicable — no database schema changes.
+**Amended 2026-08-20.** This originally read "Not applicable — no database schema changes",
+which the package's own diff falsifies. Adversarial review of PR #1 caught it (finding M5).
+
+`migrations/0001_schema_meta.sql` adds one infrastructure-only key-value table. Forward path:
+`sqlx migrate run` against a blank database, covered by a test. Rollback: revert the branch —
+the database lives in gitignored `target/` and is recreated by `just bootstrap`. The directory
+is append-only from here, enforced by `scripts/check-migrations.sh`.
+
+No schema version is seeded. An earlier revision wrote `schema_version = '0001'` into the
+table, duplicating state SQLx already keeps in `_sqlx_migrations`; the literal would have gone
+stale at `0002` while the test asserting it kept passing. The applied version is now derived
+from the migrator. Whether a richer mechanism is needed is P1-02's decision.
 
 ## Evidence required
 - Terminal output of the verification commands above.
@@ -187,6 +198,9 @@ Each was found during implementation and escalated rather than worked around.
 | `scripts/check-authority-sync.sh` | `alpha-spec.md` exists twice (root and vault mirror) with nothing preventing a fork. |
 | `scripts/check-verify-parity.sh` | The `justfile` and `scripts/verify.sh` duplicate all seven steps. D5 forbids unifying them, so drift is asserted against instead. |
 | `scripts/check-env-contract.sh` | The environment presets a stale `DATABASE_URL`; a committed `.env` cannot override it. Failure surfaced only as SQLite error code 14. |
+| `tests/guards/run.sh` | The guard scripts were the largest body of new logic with no committed tests. Both `check-secrets.sh` defects were found by ad-hoc testing that nothing re-ran. Added on review finding "minor 6"; it caught a real gap in the M3 fix on its first run. |
+| `toolchains/flutter.version` | §8.11 requires the Flutter/FRB toolchain be pinned through committed toolchain files; §8.7 names this path. Review finding M6. |
+| `docs/02-adr/006-deferred-deliverables.md` | §8.7/§9.2 items deferred without a recorded deviation. Review finding M7. |
 
 ### Unchanged
 

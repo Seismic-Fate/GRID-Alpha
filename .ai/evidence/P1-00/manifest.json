@@ -1,7 +1,7 @@
 {
   "schema": "grid-alpha/evidence-manifest/1",
   "work_package_id": "P1-00",
-  "commit": "18c8fb72b2e7af02086dded814a34b235b99eb33",
+  "commit": "36f685a4c831f12356dc212071259682d981d3af",
   "branch": "wp/P1-00-repo-bootstrap",
   "model": "claude-opus-5",
   "work_package": {
@@ -9,11 +9,11 @@
     "file": "docs/01-work-packages/p1-00-work-package.md"
   },
   "commit_info": {
-    "sha": "18c8fb72b2e7af02086dded814a34b235b99eb33",
+    "sha": "36f685a4c831f12356dc212071259682d981d3af",
     "branch": "wp/P1-00-repo-bootstrap",
     "range": "origin/main...HEAD",
-    "generated_at": "2026-08-20T03:37:13Z",
-    "state": "uncommitted: 1 path(s) not yet in 18c8fb72b2e7af02086dded814a34b235b99eb33"
+    "generated_at": "2026-08-20T03:46:41Z",
+    "state": "uncommitted: 15 path(s) not yet in 36f685a4c831f12356dc212071259682d981d3af"
   },
   "model_and_harness": {
     "project_alias": "claude-opus-5",
@@ -38,6 +38,7 @@
     ".gitattributes",
     ".github/workflows/alpha-ci.yml",
     ".gitignore",
+    ".sqlx/query-49659b12439dbee42d42de64faba42b1fdd0b928d1b80a9bbee671883e171422.json",
     ".sqlx/query-dc674e29fa32eabb9d6e82b9fb28606f24ec649c0b487ec0bf138218cfefb810.json",
     "CLAUDE.md",
     "Cargo.lock",
@@ -81,6 +82,7 @@
     "docs/02-adr/003-sqlx-0-9-upgrade.md",
     "docs/02-adr/004-line-ending-policy.md",
     "docs/02-adr/005-check-sqlx-workspace-flag.md",
+    "docs/02-adr/006-deferred-deliverables.md",
     "docs/02-adr/README.md",
     "docs/04-providers/cfbd/README.md",
     "docs/04-providers/nflverse/README.md",
@@ -102,7 +104,9 @@
     "scripts/generate-evidence-manifest.sh",
     "scripts/secret-patterns.txt",
     "scripts/verify.ps1",
-    "scripts/verify.sh"
+    "scripts/verify.sh",
+    "tests/guards/run.sh",
+    "toolchains/flutter.version"
   ],
   "contracts_and_adrs_referenced": {
     "adrs": [
@@ -110,7 +114,8 @@
       "docs/02-adr/002-sqlx-offline-cache.md",
       "docs/02-adr/003-sqlx-0-9-upgrade.md",
       "docs/02-adr/004-line-ending-policy.md",
-      "docs/02-adr/005-check-sqlx-workspace-flag.md"
+      "docs/02-adr/005-check-sqlx-workspace-flag.md",
+      "docs/02-adr/006-deferred-deliverables.md"
     ],
     "contracts": [],
     "model_specs": []
@@ -122,7 +127,7 @@
     "commands": [
       {
         "command": "just verify",
-        "environment": "Linux; DATABASE_URL=sqlite:target/grid-dev.db, SQLX_OFFLINE unset",
+        "environment": "Linux. The session inherits a stale DATABASE_URL and SQLX_OFFLINE=true from the environment definition, which cannot be changed mid-session; the canonical run therefore overrode BOTH per-command with `env -u SQLX_OFFLINE -u DATABASE_URL`, letting the committed .env supply DATABASE_URL=sqlite:target/grid-dev.db and SQLX_OFFLINE=true. Recorded precisely because an earlier revision said only 'SQLX_OFFLINE unset', which read as contradicting the known limitation (review finding 'minor 2').",
         "exit_status": 0,
         "summary": "All 7 frozen recipes passed against 18c8fb72b2e7, .env supplying DATABASE_URL=sqlite:target/grid-dev.db and SQLX_OFFLINE=true. cargo nextest: 2 tests run, 2 passed, 0 skipped.",
         "canonical": true,
@@ -283,7 +288,7 @@
   },
   "known_limitations": [
     "scripts/verify.ps1 -Scope Full has NOT been executed. It is authoritative for merge (8.11) and runs only in the windows-authoritative CI job.",
-    "check-env-contract.sh fails in this session: the stale DATABASE_URL and SQLX_OFFLINE are baked into the running process and cannot be changed mid-session. Requires the owner's environment fix plus a new session. CI is unaffected (GitHub runners set neither); the alpha-ci guards job runs it.",
+    "The grid-alpha-opus5 environment presets a stale DATABASE_URL and SQLX_OFFLINE that are baked into the running process and cannot be changed mid-session; commands override them explicitly. CI is unaffected -- NOT because runners set nothing (the workflow does set DATABASE_URL at env: scope for every job) but because the value it sets is the correct one. An earlier revision gave the wrong reason (review finding 'minor 3').",
     "-Scope Changed is still unimplemented in verify.sh and verify.ps1; both treat 'changed' as 'full'. 8.11 cites it as canonical. Deferred to P1-11 (ADR-001 D5).",
     "The justfile and scripts/verify.sh remain duplicate implementations; unification is barred by D5, so drift is guarded by check-verify-parity.sh instead.",
     "Cargo.toml, ai-toolchain.lock, rust-toolchain.toml and justfile retain CRLF. They parse correctly; repo-wide normalization is deferred to P1-11 (ADR-004).",
@@ -301,7 +306,7 @@
     "Human: configure branch protection on main (explicit P1-00 non-goal).",
     "Human: correct the grid-alpha-opus5 environment per ADR-002's contract."
   ],
-  "verification_status": "passed",
+  "verification_status": "passed_with_exceptions",
   "verification_summary": {
     "canonical_command": "just verify",
     "canonical_exit_status": 0,

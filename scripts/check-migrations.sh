@@ -24,11 +24,22 @@ fi
 # D=deleted, M=modified, R=renamed. Additions (A) are the only permitted change.
 die() { echo "check-migrations: FAIL $*" >&2; exit 1; }
 # Fail closed: a git error must never be reported as "append-only satisfied".
-violations="$(git diff --name-status --diff-filter=DMR "$BASE"...HEAD -- "$DIR")" \
+raw="$(git diff --name-status --diff-filter=DMR "$BASE"...HEAD -- "$DIR")" \
     || die "git diff ${BASE}...HEAD failed — refusing to report append-only as satisfied"
 v2="$(git diff --name-status --diff-filter=DMR -- "$DIR")"        || die "git diff (unstaged) failed"
 v3="$(git diff --cached --name-status --diff-filter=DMR -- "$DIR")" || die "git diff --cached failed"
-violations+=$'\n'"$v2"$'\n'"$v3"
+raw+=$'\n'"$v2"$'\n'"$v3"
+
+# Append-only protects migrations that ALREADY EXIST IN THE BASE. A migration introduced by
+# this branch is still a draft: amending it is not rewriting history, and blocking that would
+# stop anyone from correcting their own unmerged migration. Only flag paths present in $BASE.
+violations=""
+while IFS=$'\t' read -r st path rest; do
+    [[ -z "${path:-}" ]] && continue
+    if git cat-file -e "${BASE}:${path}" 2>/dev/null; then
+        violations+="$st"$'\t'"$path"$'\n'
+    fi
+done <<< "$raw"
 violations="$(printf '%s\n' "$violations" | grep -vE '^[[:space:]]*$' || true)"
 
 if [[ -n "$violations" ]]; then

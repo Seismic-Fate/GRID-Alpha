@@ -147,17 +147,21 @@ if [[ -n "$INPUT" ]]; then
     echo "generate-evidence-manifest: merged operator input from $INPUT"
 fi
 
-# verification_status is DERIVED from the canonical command's recorded exit status
-# (alpha-spec.md 8.11), never asserted. Non-canonical failures and un-run checks are counted
-# separately so a green headline can never hide them.
+# verification_status is DERIVED from the recorded exit statuses (alpha-spec.md 8.11), never
+# asserted. An earlier revision returned a flat "passed" whenever the canonical command passed,
+# even with failures and un-run checks counted right beneath it -- a green headline over a
+# failure, which is what the counts were supposed to prevent. Review finding "minor 1".
+# "passed_with_exceptions" now surfaces that in the headline itself.
 tmp="$(mktemp)"
 jq '
   (.verification.commands // []) as $c
   | ($c | map(select(.canonical == true)) | first) as $canon
   | .verification_status = (
-      if   $canon == null            then "unknown"
-      elif $canon.exit_status == 0   then "passed"
-      else "failed" end)
+      if   $canon == null                                          then "unknown"
+      elif $canon.exit_status != 0                                 then "failed"
+      elif ($c | any(.exit_status != null and .exit_status != 0))  then "passed_with_exceptions"
+      elif ($c | any(.exit_status == null))                        then "passed_with_exceptions"
+      else "passed" end)
   | .verification_summary = {
       canonical_command: ($canon.command // null),
       canonical_exit_status: ($canon.exit_status // null),
