@@ -1,7 +1,7 @@
 {
   "schema": "grid-alpha/evidence-manifest/1",
   "work_package_id": "P1-00",
-  "commit": "f5d0d8bb41675a715e37353373f2e5d0629a4824",
+  "commit": "3ad054bae223649191481fd04f59fb34c624e583",
   "branch": "wp/P1-00-repo-bootstrap",
   "model": "claude-opus-5",
   "work_package": {
@@ -9,11 +9,11 @@
     "file": "docs/01-work-packages/p1-00-work-package.md"
   },
   "commit_info": {
-    "sha": "f5d0d8bb41675a715e37353373f2e5d0629a4824",
+    "sha": "3ad054bae223649191481fd04f59fb34c624e583",
     "branch": "wp/P1-00-repo-bootstrap",
     "range": "origin/main...HEAD",
-    "generated_at": "2026-08-20T02:59:22Z",
-    "state": "uncommitted: 3 path(s) not yet in f5d0d8bb41675a715e37353373f2e5d0629a4824"
+    "generated_at": "2026-08-20T03:31:40Z",
+    "state": "uncommitted: 1 path(s) not yet in 3ad054bae223649191481fd04f59fb34c624e583"
   },
   "model_and_harness": {
     "project_alias": "claude-opus-5",
@@ -124,9 +124,9 @@
         "command": "just verify",
         "environment": "Linux; DATABASE_URL=sqlite:target/grid-dev.db, SQLX_OFFLINE unset",
         "exit_status": 0,
-        "summary": "All 7 frozen recipes passed against the committed series (head f5d0d8bb4167). cargo nextest: 2 tests run, 2 passed, 0 skipped.",
+        "summary": "All 7 frozen recipes passed against 3ad054bae223, with .env supplying DATABASE_URL=sqlite:target/grid-dev.db and SQLX_OFFLINE=true. cargo nextest: 2 tests run, 2 passed, 0 skipped.",
         "canonical": true,
-        "run_against_commit": "f5d0d8bb41675a715e37353373f2e5d0629a4824"
+        "run_against_commit": "3ad054bae223649191481fd04f59fb34c624e583"
       },
       {
         "command": "just verify (clean tree, no target/, 76 files)",
@@ -183,28 +183,103 @@
     "note": "Populate from an actual run. A command that was not executed is never recorded as passing (alpha-spec.md 8.11)."
   },
   "review": {
-    "reviewer_type": "pending",
-    "reviewer": null,
-    "findings": [],
-    "resolved": []
+    "reviewer_type": "independent adversarial agent, fresh context (not the implementer)",
+    "reviewer": "PR #2 — docs/05-sessions/review-P1-00-adversarial.md, branch claude/grid-alpha-adversarial-review-ikkjuk",
+    "findings": [
+      {
+        "id": "C1",
+        "summary": "just bootstrap fails on a fresh checkout: sqlx database create returns SQLite code 14 because target/ does not exist",
+        "severity": "blocker"
+      },
+      {
+        "id": "C2",
+        "summary": "fresh clone does not compile: committed .env sets DATABASE_URL without SQLX_OFFLINE, so query! never consults the committed .sqlx cache (exit 101)",
+        "severity": "blocker"
+      },
+      {
+        "id": "C3",
+        "summary": "manifest attested to f5d0d8b while HEAD was 4 commits later, two of them touching CI-gating code",
+        "severity": "blocker"
+      },
+      {
+        "id": "C4",
+        "summary": "PR body claimed commit_info.state reads 'clean' while the committed manifest read 'uncommitted: 3 path(s)'",
+        "severity": "blocker"
+      },
+      {
+        "id": "C5",
+        "summary": "manifest records the three role-scoped approvals as not obtained while five ADRs assert owner acceptance — presented without distinguishing the two",
+        "severity": "blocker"
+      },
+      {
+        "id": "C6",
+        "summary": "licence change GPL-3.0 -> MIT OR Apache-2.0 was out of the work package's stated scope and attributed to the wrong role under 1.4",
+        "severity": "blocker"
+      },
+      {
+        "id": "M1",
+        "summary": "check-secrets.sh failed OPEN: invalid empty-tree git expression, error swallowed by || true, printed OK having scanned nothing tracked",
+        "severity": "major"
+      }
+    ],
+    "resolved": [
+      {
+        "id": "C1",
+        "disposition": "fixed in d35a905, independently of the review; CI reproduced the same diagnosis"
+      },
+      {
+        "id": "C2",
+        "disposition": "fixed in 3ad054b — .env now sets SQLX_OFFLINE=true; ADR-002 corrected, it had stated the opposite"
+      },
+      {
+        "id": "C3",
+        "disposition": "fixed — manifest regenerated against the current code head; a manifest structurally cannot cover its own commit, now stated as a limitation rather than papered over"
+      },
+      {
+        "id": "C4",
+        "disposition": "fixed — the false sentence is removed. It described intended behaviour that was never re-checked against the artifact"
+      },
+      {
+        "id": "C5",
+        "disposition": "fixed — decision rulings and role-scoped review sign-offs are now separated explicitly below; they were previously two undifferentiated lists that read as contradictory"
+      },
+      {
+        "id": "C6",
+        "disposition": "fixed — ADR-001 re-attributed D4 to the Data/Licensing owner and records the scope deviation plainly; D4 touches only LICENSE* and is independently revertible"
+      },
+      {
+        "id": "M1",
+        "disposition": "fixed in 3ad054b — fails closed; regression-tested against a committed secret with no origin/main. check-migrations.sh carried the same pattern and was hardened too"
+      }
+    ],
+    "reviewed_commit": "7787921",
+    "verdict": "CONDITIONAL — 6 blockers, 10 major, 9 minor",
+    "not_independently_confirmed_by_reviewer": [
+      "cargo deny, cargo audit and typos were unavailable in the reviewer's environment; the RUSTSEC-2023-0071 remediation is confirmed there only indirectly (rsa absent from Cargo.lock). It is confirmed directly here: cargo audit exit 0."
+    ]
   },
   "human_approvals": {
-    "required": [
-      "Architecture owner: authority order, crate boundaries, P1-02 to P1-00 scope rework",
-      "Security/Release owner: .claude/settings.json permission profile",
-      "Merge reviewer: CI skeleton and branch protection"
-    ],
-    "obtained": [
+    "required": [],
+    "obtained": [],
+    "note": "Two distinct things, previously presented as one and so reading as contradictory. DECISION RULINGS were given by the owner in-session, each in response to an explicit question naming the alternatives; they authorize the decisions the ADRs record. ROLE-SCOPED SIGN-OFFS are reviews of the resulting artifacts and NONE have been performed. The owner holds every role per docs/00-meta/authority-index.md, so both statements are true at once — but they are not interchangeable, and a ruling on a question is not a review of a diff.",
+    "decision_rulings_obtained": [
       "D1 branch naming wp/P1-00-repo-bootstrap",
-      "D2 remediate skeleton gaps inside P1-00",
-      "D3 numbered Obsidian vault over the flat 8.7 tree",
-      "D4 MIT OR Apache-2.0 licensing",
-      "D5 verify recipes frozen; rework the spec instead",
-      "D6 environment defects fixed in the environment",
-      "ADR-003 sqlx 0.8 to 0.9 upgrade",
+      "D2 remediate the skeleton gaps inside P1-00",
+      "D3 keep the numbered Obsidian vault over the flat 8.7 tree",
+      "D4 MIT OR Apache-2.0 is the correct licence (Data/Licensing owner authority)",
+      "D5 verification recipes are frozen; rework the spec instead",
+      "D6 environment defects are fixed in the environment, not in-repo",
+      "ADR-003 sqlx 0.8 -> 0.9 to remediate RUSTSEC-2023-0071",
       "ADR-004 line-ending policy and LF conversion of shell scripts",
-      "ADR-005 amend check-sqlx with --workspace"
-    ]
+      "ADR-005 amend the frozen check-sqlx recipe with --workspace"
+    ],
+    "role_scoped_signoffs_required": [
+      "Architecture owner: formal sign-off on authority order, crate boundaries and the P1-02 -> P1-00 rework",
+      "Security/Release owner: .claude/settings.json permission profile",
+      "Data/Licensing owner: the D4 licence change, which was outside the work package's stated scope",
+      "Merge reviewer: the CI skeleton and the final diff"
+    ],
+    "role_scoped_signoffs_obtained": []
   },
   "known_limitations": [
     "scripts/verify.ps1 -Scope Full has NOT been executed. It is authoritative for merge (8.11) and runs only in the windows-authoritative CI job.",
@@ -213,7 +288,9 @@
     "The justfile and scripts/verify.sh remain duplicate implementations; unification is barred by D5, so drift is guarded by check-verify-parity.sh instead.",
     "Cargo.toml, ai-toolchain.lock, rust-toolchain.toml and justfile retain CRLF. They parse correctly; repo-wide normalization is deferred to P1-11 (ADR-004).",
     "No fixtures are delivered. alpha-spec.md 9.5 lists them under P1-00; deferred to P1-03/P1-04 and recorded in ADR-001 rather than accepted silently.",
-    "No fresh-context review has been performed. 1.4 and 8.8.2 require a reviewer who is not the implementer."
+    "An evidence manifest structurally cannot record the SHA of its own commit. This one attests to 3ad054bae223, the head of every code and documentation change; the manifest commit itself follows and is not covered. CI is authoritative on the true final commit (12.8).",
+    "The adversarial review at 7787921 raised 6 blockers, 10 major and 9 minor findings. The 6 blockers and the highest-value major are resolved and recorded above; the remaining major and minor findings have NOT yet been triaged and are outstanding work on this PR.",
+    "windows-authoritative CI has never completed successfully anywhere. verify.ps1 -Scope Full remains unexecuted, and it is authoritative for merge (8.11)."
   ],
   "follow_up": [
     "P1-11: implement -Scope Changed in both verify scripts.",
