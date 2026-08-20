@@ -15,6 +15,9 @@ bootstrap:
     cargo install hyperfine --locked
     cargo install cargo-mutants --locked
     # Local SQLite development database for the compile-time query cache (ADR-002).
+    # target/ must exist first: sqlite cannot create a file in a missing directory,
+    # and a fresh checkout has no target/ until cargo runs.
+    mkdir -p target
     sqlx database create
     sqlx migrate run
 
