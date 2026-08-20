@@ -61,7 +61,25 @@ if git rev-parse --verify --quiet "${BASE}^{commit}" >/dev/null; then
     mode="diff vs $BASE"
     d="$(git diff "$BASE"...HEAD --unified=0 -- . "${SELF[@]}")" \
         || die "git diff ${BASE}...HEAD failed — refusing to report a clean scan"
-    added+=$'\n'"$(printf '%s\n' "$d" | plus)"
+    diff_lines="$(printf '%s\n' "$d" | plus)"
+    added+=$'\n'"$diff_lines"
+    hunk_lines=$(printf '%s\n' "$diff_lines" | grep -c . || true)
+
+    # The same guard the full-tree branch has, on the branch CI actually takes. The full-tree
+    # empty-scan check was added after the Windows fail-open; this `if`'s other arm went without
+    # one for a round, which is the same defect class sitting untouched next to its own fix.
+    #
+    # Deliberately compares against CHANGED FILES, not against the diff text: an empty diff is a
+    # legitimate clean result, but files changed with no added lines collected means the scanner
+    # parsed nothing out of a real change set.
+    changed="$(git diff --name-only "$BASE"...HEAD -- . "${SELF[@]}")" \
+        || die "git diff --name-only failed — refusing to report a clean scan"
+    changed_n=$(printf '%s\n' "$changed" | grep -c . || true)
+    if [[ "$changed_n" -gt 0 && "$hunk_lines" -eq 0 ]]; then
+        die "the diff against $BASE touches $changed_n file(s) but ZERO added lines were
+       collected. The scanner parsed nothing out of a real change set; that is not a clean
+       diff. Refusing to report OK."
+    fi
 else
     # No usable base: fresh clone, shallow checkout, or an unborn branch. Scan everything
     # tracked. Scanning less than the diff would be a silent downgrade of the control.
@@ -123,7 +141,15 @@ done < "$PATTERNS"
 if [[ "$status" -eq 0 ]]; then
     # The file count is part of the verdict: "OK" over an empty corpus is what the Windows
     # fail-open looked like, and an unqualified OK gives a reader no way to notice.
-    echo "check-secrets: OK no secret patterns found ($mode; $scanned whole file(s) read)$([[ "$warned" -gt 0 ]] && echo ", $warned warn-tier match(es) above")"
+    # The size of the corpus is part of the verdict. An unqualified OK is what the Windows
+    # fail-open looked like, and each mode measures a different thing: diff mode reads added
+    # lines out of hunks, full-tree mode opens whole files. Say which, and how many.
+    if [[ "${hunk_lines:-}" != "" ]]; then
+        size="${hunk_lines} added line(s) from ${changed_n} changed file(s), plus $scanned whole file(s)"
+    else
+        size="$scanned whole file(s) read"
+    fi
+    echo "check-secrets: OK no secret patterns found ($mode; $size)$([[ "$warned" -gt 0 ]] && echo ", $warned warn-tier match(es) above")"
 else
     echo "check-secrets: secrets must never be committed (alpha-spec.md 14.1)." >&2
     echo "  If this is a false positive, narrow the pattern in $PATTERNS — never delete the check." >&2
