@@ -14,8 +14,9 @@ pull_request: Seismic-Fate/GRID-Alpha#1
 
 - **Verdict: CONDITIONAL** — six blockers (C1–C6) must be resolved before merge.
 - **Confidence: High** for C1–C4 and M1 (reproduced locally against branch HEAD with the real
-  toolchain); Medium for C5–C6 and the governance findings (they turn on approval records this
-  reviewer cannot see).
+  toolchain; **C1 has since been confirmed independently by CI** — `linux-smoke` failed at its
+  `Bootstrap` step with the exact error predicted below); Medium for C5–C6 and the governance
+  findings (they turn on approval records this reviewer cannot see).
 - **Time spent:** ~45 minutes.
 
 The package is unusually well documented. Five ADRs, a real evidence manifest, six executable
@@ -50,7 +51,7 @@ and the project's outbound licence was changed from GPL-3.0 to MIT OR Apache-2.0
 | `sha256sum` of committed `manifest.json` vs PR-body claim | **matches** |
 | `diff <(git show origin/main:scripts/verify.sh \| tr -d '\r') scripts/verify.sh` | one line — ADR-004's claim **holds** |
 | `cargo metadata` licence census (172 crates) vs `deny.toml` allowlist | every crate satisfiable |
-| GitHub check runs on PR #1 | guards green; **linux-smoke and windows-authoritative never completed on any commit** |
+| GitHub check runs on PR #1 | guards green; **`linux-smoke` FAILED** at `just bootstrap` (03:20:49Z); `windows-authoritative` still in progress |
 
 `cargo deny check`, `cargo audit` and `typos` were not run (tools unavailable in this
 environment); the RUSTSEC-2023-0071 remediation was confirmed indirectly — `rsa` is absent
@@ -219,10 +220,21 @@ artifacts in the diff.
   `create_if_missing(true)` and **never creates the parent directory**. SQLite itself refuses to
   create a database in a non-existent directory (independently confirmed). `cargo install
   --locked` does not create `./target`, so nothing earlier in the recipe supplies it.
-- **Consequence:** `linux-smoke` and `windows-authoritative` both fail at their `Bootstrap`
-  step. This is consistent with the observation that neither job has ever completed (M8). It
-  also means the ADR-002 developer onboarding path — "`just bootstrap` creates it and applies
-  migrations" — has never worked from clean.
+- **Confirmed in CI after this finding was written.** `linux-smoke` on run #2 (`7787921`)
+  completed **failure** at 2026-08-20T03:20:49Z, at the `Bootstrap` step, with the predicted
+  error verbatim
+  ([job 96299995264](https://github.com/Seismic-Fate/GRID-Alpha/actions/runs/32326922669/job/96299995264)):
+  ```
+  # Local SQLite development database for the compile-time query cache (ADR-002).
+  sqlx database create
+  error: error returned from database: (code: 14) unable to open database file
+  error: recipe `bootstrap` failed on line 18 with exit code 1
+  ##[error]Process completed with exit code 1.
+  ```
+- **Consequence:** `linux-smoke` is red and `windows-authoritative` runs the same recipe, so it
+  will fail the same way. The ADR-002 developer onboarding path — "`just bootstrap` creates it
+  and applies migrations" — has never worked from clean, and the acceptance criterion that the
+  repository passes `just verify` on Linux in the cloud environment is **not met**.
 - **Irony worth noting:** commit `7787921` relaxed `check-env-contract.sh` so a missing
   `target/` is a NOTE rather than a failure, on the reasoning that "bootstrap will create it".
   The guard that would have flagged this was softened; the underlying defect was not found.
@@ -472,15 +484,16 @@ artifacts in the diff.
 
 **M8. No CI build job has ever completed, on any commit.**
 
-- **Evidence (GitHub API, PR #1, at review time):** run #1 (`d2af8d6`) — **cancelled**;
-  run #2 (`7787921`) — `repository guards` **success**, `linux-smoke` **in_progress**,
-  `windows-authoritative` **in_progress**, both started 03:04:50.
+- **Evidence (GitHub API, PR #1):** run #1 (`d2af8d6`) — **cancelled**. Run #2 (`7787921`) —
+  `repository guards` **success** (03:05:55Z); `linux-smoke` **failure** (03:20:49Z, at
+  `Bootstrap`, per C1); `windows-authoritative` still **in_progress**.
 - The acceptance criterion "The repository passes `just verify` … on Linux in the cloud
   environment" has no CI confirmation, and `scripts/verify.ps1 -Scope Full` — authoritative for
   merge under §8.11 — has never executed anywhere. The manifest discloses the latter honestly as
   a known limitation, which is to its credit; the point stands that the merge gate is unproven.
-- Given C1, this reviewer's expectation is that both jobs fail at their `Bootstrap` step rather
-  than eventually going green. Confirm before merging.
+- `linux-smoke` has now failed exactly as C1 predicted. `windows-authoritative` runs the same
+  `just bootstrap` recipe and should be expected to fail identically; it has never produced a
+  result on any commit.
 
 **M9. `.claude/settings.json` deny rules that appear to block shell pipelines may not.**
 
@@ -562,8 +575,9 @@ artifacts in the diff.
 ## Questions for Implementer
 
 1. **Was `just bootstrap` ever executed on a checkout without a pre-existing `target/` directory?**
-   It fails deterministically there (C1). If the session's `target/` predated it, the "clean
-   76-file checkout, no `target/`" claim in the PR body needs to be withdrawn or re-evidenced.
+   It fails deterministically there — now confirmed by `linux-smoke` (C1). If the session's
+   `target/` predated the run, the "clean 76-file checkout, no `target/`" claim in the PR body
+   needs to be withdrawn or re-evidenced.
 
 2. **What exact environment did the canonical `just verify` run under?** The manifest says
    `SQLX_OFFLINE` unset; the known limitations say it could not be unset. Under the former, C2
