@@ -113,6 +113,20 @@ grep -q 'f="${f}\\r"' "$d/scripts/check-secrets.sh" \
     || bad "empty-scan fixture did not apply" "sed did not patch the copied scanner"
 expect 1 "zero files scanned over a non-empty tree fails closed" "$d" ./scripts/check-secrets.sh
 
+# The same empty-scan guard, on the OTHER arm of the if -- diff mode, which is the arm CI takes.
+# The full-tree arm got its guard when the Windows fail-open was found; this one went a round
+# without, sitting untouched next to its own fix.
+d="$(new_repo secrets-empty-diff)"
+git -C "$d" branch -q base HEAD
+echo "// a real change" > "$d/changed.rs"
+git -C "$d" add -A; git -C "$d" commit -qm "P1-00 change a file"
+expect 0 "control: diff mode reports a clean diff here" "$d" ./scripts/check-secrets.sh base
+# Make the added-line extractor yield nothing while the diff still touches files.
+sed -i "s|^plus() .*|plus() { grep -E '^ZZZNOMATCHZZZ' \|\| true; }|" "$d/scripts/check-secrets.sh"
+grep -q 'ZZZNOMATCHZZZ' "$d/scripts/check-secrets.sh" \
+    || bad "empty-diff fixture did not apply" "sed did not patch the copied scanner"
+expect 1 "changed files with zero added lines collected fails closed" "$d" ./scripts/check-secrets.sh base
+
 # minor 3: the deny patterns require realistic token lengths, so a truncated or short test
 # token sits in the gap. The warn tier reports it without failing the build.
 d="$(new_repo secrets-warn)"
@@ -235,6 +249,43 @@ for good_scope in Full FULL full Changed changed; do
     expect_env 99 "scope '$good_scope' reaches the first check" "$d" "PATH=$d/stub:$PATH" -- ./scripts/verify.sh "$good_scope"
 done
 expect_env 99 "no argument defaults to full" "$d" "PATH=$d/stub:$PATH" -- ./scripts/verify.sh
+
+# ADR-009 fixed verify.ps1 to check $LASTEXITCODE after every native command. Nothing stops a
+# later command being added WITHOUT one, which would silently reopen the merge-gate fail-open --
+# and no other guard can see it: check-verify-parity reads the justfile and verify.sh, never the
+# PowerShell implementation. This is a text analysis, so it runs on Linux where pwsh does not.
+echo "verify.ps1 exit-code coverage (ADR-009 regression)"
+ps1_unguarded() {
+    awk '
+      /^[[:space:]]*#/                                       { next }
+      /^[[:space:]]*(if|throw|else|\}|function|param|\[|\$)/ { next }
+      /Assert-Ok/                                            { next }
+      /Write-Host/                                           { next }
+      /^[[:space:]]+[A-Za-z]/ {
+          cmd = $0
+          if ((getline nxt) <= 0 || nxt !~ /Assert-Ok/) { print "UNGUARDED:" cmd; bad++ } else { n++ }
+          next
+      }
+      END { printf "%d guarded, %d unguarded\n", n, bad+0; exit (bad+0) > 0 }
+    ' "$1"
+}
+
+ps1_plain="$TMP/verify.ps1.lf"
+tr -d '\r' < "$ROOT/scripts/verify.ps1" > "$ps1_plain"
+if out="$(ps1_unguarded "$ps1_plain")"; then
+    ok "every native command in verify.ps1 is followed by Assert-Ok ($out)"
+else
+    bad "a native command in verify.ps1 has no exit-code check" "$out"
+fi
+
+# Mutation control: the analysis must actually be able to fail, or it proves nothing.
+ps1_mutated="$TMP/verify.ps1.mutated"
+grep -v 'Assert-Ok "cargo audit"' "$ps1_plain" > "$ps1_mutated"
+if ps1_unguarded "$ps1_mutated" >/dev/null 2>&1; then
+    bad "the verify.ps1 coverage check cannot fail" "removing an Assert-Ok still reported clean"
+else
+    ok "removing one Assert-Ok is caught (mutation control)"
+fi
 
 echo
 printf '%s passed, %s failed\n' "$pass" "$fail"

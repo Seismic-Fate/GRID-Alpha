@@ -139,6 +139,30 @@ jobs:
           just --version; cargo nextest --version; sqlx --version
           cargo deny --version; cargo audit --version; typos --version
 
+      # ADR-009 fixed verify.ps1 to propagate exit codes. Run 32382377066 was green with every
+      # command passing, which proves nothing about the throw path: an inert Assert-Ok and a
+      # working one produce identical output when nothing fails. "A gate that passes vacuously
+      # is a gate nobody has tested" (ADR-002) applies to the fix as much as to the gate.
+      #
+      # This exercises the REAL script -- not a copy of the helper, which could drift -- with a
+      # cargo that fails. verify.ps1's first command is `cargo fmt`, so it throws immediately;
+      # the step costs seconds. Run as a child process so its exit code can be READ rather than
+      # propagated as a terminating error.
+      - name: verify.ps1 propagates failures (ADR-009 self-test)
+        shell: pwsh
+        run: |
+          $stub = Join-Path $env:RUNNER_TEMP 'stub-bin'
+          New-Item -ItemType Directory -Force -Path $stub | Out-Null
+          Set-Content -Path (Join-Path $stub 'cargo.cmd') -Value 'exit /b 7'
+          $env:PATH = "$stub;$env:PATH"
+          pwsh -NoProfile -File ./scripts/verify.ps1 -Scope Full
+          $rc = $LASTEXITCODE
+          Remove-Item -Recurse -Force $stub
+          if ($rc -eq 0) {
+            throw "verify.ps1 exited 0 with a FAILING cargo. ADR-009's fix is inert and the merge gate cannot fail."
+          }
+          Write-Host "verify.ps1 correctly refused to pass with a failing command: exit $rc"
+
       - name: Bootstrap
         shell: pwsh
         run: just bootstrap
