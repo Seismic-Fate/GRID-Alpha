@@ -1,0 +1,33 @@
+# Build output
+/target/
+**/*.rs.bk
+
+# Local development database (recreated by `just bootstrap`)
+/target/grid-dev.db*
+
+# Ignored build/test output (alpha-spec 8.7)
+/artifacts/
+/mutants.out/
+
+# Raw and derived data — never committed
+/data/
+
+# Developer-local notes and overrides (alpha-spec 8.7)
+CLAUDE.local.md
+.env.local
+
+# Flutter / Dart
+/app/build/
+/app/.dart_tool/
+/app/.flutter-plugins
+/app/.flutter-plugins-dependencies
+/app/windows/flutter/ephemeral/
+/app/linux/flutter/ephemeral/
+
+# Editor / OS
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# NOTE: Cargo.lock, .sqlx/ and .env ARE committed (alpha-spec 8.7, ADR-002).
