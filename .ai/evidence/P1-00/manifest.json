@@ -1,7 +1,7 @@
 {
   "schema": "grid-alpha/evidence-manifest/1",
   "work_package_id": "P1-00",
-  "commit": "a0a307affd866a846c0b6623af9ec9f4975d43a4",
+  "commit": "5492b9083b8d5d2859b0c064de0717a887567238",
   "branch": "wp/P1-00-repo-bootstrap",
   "model": "claude-opus-5",
   "work_package": {
@@ -9,11 +9,11 @@
     "file": "docs/01-work-packages/p1-00-work-package.md"
   },
   "commit_info": {
-    "sha": "a0a307affd866a846c0b6623af9ec9f4975d43a4",
+    "sha": "5492b9083b8d5d2859b0c064de0717a887567238",
     "branch": "wp/P1-00-repo-bootstrap",
     "range": "origin/main...HEAD",
-    "generated_at": "2026-08-20T13:44:54Z",
-    "state": "uncommitted: 3 path(s) not yet in a0a307affd866a846c0b6623af9ec9f4975d43a4"
+    "generated_at": "2026-08-20T14:46:06Z",
+    "state": "uncommitted: 3 path(s) not yet in 5492b9083b8d5d2859b0c064de0717a887567238"
   },
   "model_and_harness": {
     "project_alias": "claude-opus-5",
@@ -85,6 +85,7 @@
     "docs/02-adr/006-deferred-deliverables.md",
     "docs/02-adr/007-verify-covers-guards-and-doctests.md",
     "docs/02-adr/008-verify-scope-guard.md",
+    "docs/02-adr/009-verify-ps1-exit-codes.md",
     "docs/02-adr/README.md",
     "docs/04-providers/cfbd/README.md",
     "docs/04-providers/nflverse/README.md",
@@ -121,7 +122,8 @@
       "docs/02-adr/005-check-sqlx-workspace-flag.md",
       "docs/02-adr/006-deferred-deliverables.md",
       "docs/02-adr/007-verify-covers-guards-and-doctests.md",
-      "docs/02-adr/008-verify-scope-guard.md"
+      "docs/02-adr/008-verify-scope-guard.md",
+      "docs/02-adr/009-verify-ps1-exit-codes.md"
     ],
     "contracts": [],
     "model_specs": []
@@ -135,81 +137,81 @@
         "command": "just verify",
         "environment": "Linux. The session inherits a stale DATABASE_URL from the environment definition (a leftover /home/user/nfl-alpha path) which cannot be changed mid-session, so the canonical run overrides it with `env -u SQLX_OFFLINE -u DATABASE_URL`, letting the committed .env supply DATABASE_URL=sqlite:target/grid-dev.db and SQLX_OFFLINE=true. CI is unaffected: the workflow sets DATABASE_URL at env: scope and the value it sets is the correct one.",
         "exit_status": 0,
-        "summary": "All 9 recipes passed. cargo nextest: 3 tests run, 3 passed, 0 skipped. Doctests: 12 crate targets, 0 doctests (none exist yet; the gate is in place for P1-01). Guard suite: 35 cases passed. check-verify-parity: justfile and scripts/verify.sh agree on 16 steps.",
+        "summary": "All 9 recipes passed. cargo nextest: 3 tests run, 3 passed, 0 skipped. Doctests: 12 crate targets, 0 doctests. Guard suite: 38 cases passed (was 35; three added for the two fail-opens found in run 32376218798). check-verify-parity: 16 steps.",
         "canonical": true,
-        "run_against_commit": "a0a307affd866a846c0b6623af9ec9f4975d43a4"
+        "run_against_commit": "5492b9083b8d5d2859b0c064de0717a887567238"
       },
       {
         "command": "env -u DATABASE_URL SQLX_OFFLINE=true cargo check --workspace",
         "exit_status": 0,
-        "run_against_commit": "a0a307affd866a846c0b6623af9ec9f4975d43a4",
+        "run_against_commit": "5492b9083b8d5d2859b0c064de0717a887567238",
         "summary": "Fresh-clone offline compile (M5). Proven against a forced macro re-expansion, not a warm cache: `touch crates/persistence/src/lib.rs` then check -> exit 0. Proven to FAIL correctly: with .sqlx moved aside -> exit 101, 'SQLX_OFFLINE=true but there is no cached data for this query'. Now a CI step in linux-smoke."
       },
       {
         "command": "./scripts/verify.sh <scope> (Full FULL full Changed changed smoke --help 'full ' and no argument)",
         "exit_status": 0,
-        "run_against_commit": "a0a307affd866a846c0b6623af9ec9f4975d43a4",
+        "run_against_commit": "5492b9083b8d5d2859b0c064de0717a887567238",
         "summary": "C1 scope guard, verified across the argument space with cargo stubbed so the guard is observed in isolation. Accepted forms reach the first check (stub exit 99); smoke, --help and 'full ' are rejected with exit 2 and a named reason. Before the fix all nine invocations exited 0 having run nothing."
       },
       {
         "command": "./tests/guards/run.sh",
         "exit_status": 0,
-        "run_against_commit": "a0a307affd866a846c0b6623af9ec9f4975d43a4",
+        "run_against_commit": "5492b9083b8d5d2859b0c064de0717a887567238",
         "summary": "35 cases passed, 0 failed -- up from 12. All six guards now covered (M8), plus the verify.sh scope guard. New: parity agreement/drift/zero-extraction; env-contract SQLX_OFFLINE consistency and .env resolution; the base-ref SKIP path skipping outside CI and FAILING under $CI for both diff guards; a secret planted in the pattern file being caught; '# nosecret' exemption; warn-tier match not failing."
       },
       {
         "command": "cargo sqlx prepare --check --workspace -- --lib",
         "exit_status": 0,
-        "run_against_commit": "a0a307affd866a846c0b6623af9ec9f4975d43a4",
+        "run_against_commit": "5492b9083b8d5d2859b0c064de0717a887567238",
         "summary": "Drift detection proven by mutation: editing the query -> exit 1 ('missing one or more queries'); restoring -> exit 0."
       },
       {
         "command": "./scripts/check-migrations.sh origin/main",
         "exit_status": 0,
-        "run_against_commit": "a0a307affd866a846c0b6623af9ec9f4975d43a4",
+        "run_against_commit": "5492b9083b8d5d2859b0c064de0717a887567238",
         "summary": "Append-only satisfied, 1 migration, base origin/main. Behaviour-tested: add PASS, modify FAIL, delete FAIL, amend-an-unmerged-draft PASS, and no-base-ref FAILS under $CI."
       },
       {
         "command": "./scripts/check-secrets.sh origin/main",
         "exit_status": 0,
-        "run_against_commit": "a0a307affd866a846c0b6623af9ec9f4975d43a4",
+        "run_against_commit": "5492b9083b8d5d2859b0c064de0717a887567238",
         "summary": "No secret patterns found (diff vs origin/main). The detector's own two files are no longer excluded from all scanning -- they get a dedicated always-on pass, with a line-level '# nosecret' exemption (minor 4). Verified that no current pattern self-matches either file."
       },
       {
         "command": "./scripts/check-traceability.sh origin/main",
         "exit_status": 0,
-        "run_against_commit": "a0a307affd866a846c0b6623af9ec9f4975d43a4",
+        "run_against_commit": "5492b9083b8d5d2859b0c064de0717a887567238",
         "summary": "All 65 non-trivial paths traced individually, without PR_BODY -- which is how the build jobs run it now that they check out at fetch-depth 0."
       },
       {
         "command": "./scripts/check-authority-sync.sh",
         "exit_status": 0,
-        "run_against_commit": "a0a307affd866a846c0b6623af9ec9f4975d43a4",
+        "run_against_commit": "5492b9083b8d5d2859b0c064de0717a887567238",
         "summary": "The two alpha-spec.md copies are byte-identical (94813 bytes)."
       },
       {
         "command": "./scripts/check-verify-parity.sh",
         "exit_status": 0,
-        "run_against_commit": "a0a307affd866a846c0b6623af9ec9f4975d43a4",
+        "run_against_commit": "5492b9083b8d5d2859b0c064de0717a887567238",
         "summary": "justfile and scripts/verify.sh agree on 16 verification steps. Order-sensitive. Now also fails, with a diagnosis, when either extraction yields zero commands -- previously that died at exit 1 with an empty message (M8)."
       },
       {
         "command": "./scripts/check-env-contract.sh",
         "exit_status": 0,
-        "run_against_commit": "a0a307affd866a846c0b6623af9ec9f4975d43a4",
+        "run_against_commit": "5492b9083b8d5d2859b0c064de0717a887567238",
         "summary": "DATABASE_URL=sqlite:target/grid-dev.db (from .env, repo-relative); SQLX_OFFLINE=true (from .env), .sqlx/ present. The guard now resolves SQLX_OFFLINE the way the query! macro does rather than reporting only the shell's view (C2)."
       },
       {
         "command": "cargo deny check",
         "exit_status": 0,
-        "run_against_commit": "a0a307affd866a846c0b6623af9ec9f4975d43a4",
+        "run_against_commit": "5492b9083b8d5d2859b0c064de0717a887567238",
         "summary": "advisories ok, bans ok, licenses ok, sources ok on the pinned cargo-deny 0.20.2. No unknown-field or deprecation warning for the explicit unmaintained/unsound keys, so both are honoured rather than silently ignored -- answering the reviewer's question 7, which they could not run."
       },
       {
         "command": ".\\\\scripts\\\\verify.ps1 -Scope Full",
-        "exit_status": 0,
-        "run_against_commit": "6478c24d0168deceef78a590d89a31e55cb9606a",
-        "summary": "PASSED on windows-latest, run 32329932430 job 96308538400, 32m12s. Authoritative for merge (8.11). NOT yet re-run against this head: it is a ~32-minute job and this push is the run that will cover it. CI on the true final commit is authoritative per 12.8."
+        "exit_status": null,
+        "run_against_commit": null,
+        "summary": "NOT ESTABLISHED -- withdrawn, not failed. Previous runs of this command exited 0, but ADR-009 establishes that the script could not fail: it ran sixteen native commands with zero exit-code checks, so a non-zero exit from any of them was discarded and execution reached '[verify] All checks passed.' regardless. Demonstrated in run 32376218798 job 96448140619, where tests/guards/run.sh printed '33 passed, 2 failed', exited non-zero, and the job still reported SUCCESS. Every prior windows-authoritative green on this branch therefore shows that the steps RAN, not that they PASSED -- including run 32329932430, previously cited here and in ADR-003 as the 14.2 Windows compatibility check. The script is fixed in this branch; this entry will be re-recorded only from a run of the FIXED script. Owner ruling D11: withdraw and re-earn."
       },
       {
         "command": "alpha-ci run 32332121205 (guards / linux-smoke / windows-authoritative)",
@@ -307,16 +309,29 @@
         "id": "minor 6",
         "summary": "just bootstrap re-installs tools CI already has, plus hyperfine and cargo-mutants no CI step uses",
         "disposition": "PARTLY FIXED. hyperfine and cargo-mutants moved to a bootstrap-bench recipe, and bootstrap's sqlx-cli now takes CI's feature narrowing instead of pulling the MySQL and Postgres drivers. Caching itself stays P1-11."
+      },
+      {
+        "id": "SELF-1 (verify.ps1 fail-open)",
+        "summary": "scripts/verify.ps1, the 8.11 merge-authoritative command, discarded the exit code of all sixteen commands it ran; the Windows gate could not fail",
+        "disposition": "FIXED (ADR-009, fourth D5 amendment, owner ruling D10). Found by this implementer, not by either reviewer, and only because round 3's $CI fail-closed change and 23 new guard cases made the Windows job print a real verdict for the first time. Explicit Assert-Ok after each command; the one-line $PSNativeCommandUseErrorActionPreference alternative was rejected as a silent no-op on the pinned 7.2. Consequence accepted rather than minimised: all prior Windows greens are withdrawn as evidence of passing."
+      },
+      {
+        "id": "SELF-2 (check-secrets blind on Windows)",
+        "summary": "both git ls-files scan loops examined ZERO files on Windows; the guard printed 'OK no secret patterns found' over a committed ghp_ token and a credentialed connection string",
+        "disposition": "FIXED. Hidden by SELF-1: the guard suite detected it and verify.ps1 threw the verdict away. Three layers -- CR-stripping on paths and patterns; a fail-closed check so a scan that opened nothing can never report OK whatever the platform cause; and the file count in the verdict line so an empty corpus is visible. .gitattributes pins secret-patterns.txt to LF at the source. Three regression cases, one of them a deliberate control so the empty-scan case cannot pass for the wrong reason."
+      },
+      {
+        "id": "C3 / M6 / M7 owner records",
+        "summary": "the three deviations needing an owner-authored artifact rather than implementer prose",
+        "disposition": "CLOSED by the owner on PR #1 (2026-08-20): the permissive licence per 2565acc, the SQLx bootstrap moving P1-02 -> P1-00, and the sqlx 0.8 -> 0.9 bump as a consequence of that fold-in. This is the artifact both review rounds asked for and that no implementer-written ADR could substitute for."
       }
     ]
   },
   "human_approvals": {
     "required": [
-      "Architecture owner: authority order, crate boundaries, and the P1-02 -> P1-00 SQLx rework (review M6)",
+      "Architecture owner: formal sign-off on the diff (authority order, crate boundaries) -- the P1-02 -> P1-00 rework itself is now recorded by the owner on PR #1",
       "Security/Release owner: .claude/settings.json permission profile",
-      "Data/Licensing owner: the D4 licence change, outside the work package's stated scope (review C3)",
-      "Merge reviewer: the CI skeleton and the final diff",
-      "Product/Architecture owner: record the 14.2 deviation for sqlx 0.8 -> 0.9 on PR #1 (review M7)"
+      "Merge reviewer: the CI skeleton and the final diff"
     ],
     "obtained": [
       "D1 branch naming wp/P1-00-repo-bootstrap",
@@ -331,16 +346,21 @@
       "ADR-003 sqlx 0.8 -> 0.9 to remediate RUSTSEC-2023-0071",
       "ADR-004 line-ending policy and LF conversion of shell scripts",
       "ADR-005 amend the frozen check-sqlx recipe with --workspace",
-      "ADR-007 verify covers the repository guards and doctests"
+      "ADR-007 verify covers the repository guards and doctests",
+      "D10 fix verify.ps1 with explicit $LASTEXITCODE checks (ADR-009, fourth D5 amendment)",
+      "D11 withdraw the Windows evidence and re-earn it from a run of the fixed script",
+      "Owner record on PR #1: permissive licence (2565acc), SQLx bootstrap P1-02 -> P1-00, sqlx 0.8 -> 0.9 as a consequence"
     ],
-    "note": "`required` and `obtained` are the 8.12-mandated fields and are now populated; an earlier revision left both empty while the prose beneath named four outstanding sign-offs, so an automated consumer -- or a reviewer skimming the mandated field name -- read 'no approvals required' (second review, M3). They record two DIFFERENT things and the distinction is load-bearing. `obtained` holds DECISION RULINGS: answers the owner gave in-session to explicit questions naming the alternatives, authorizing the decisions the ADRs record. `required` holds ROLE-SCOPED SIGN-OFFS: reviews of the resulting artifacts, of which NONE has been performed. The owner holds every role (docs/00-meta/authority-index.md), so both statements are true at once -- but a ruling on a question is not a review of a diff.",
+    "note": "`required` and `obtained` are the 8.12-mandated fields and are now populated; an earlier revision left both empty while the prose beneath named four outstanding sign-offs, so an automated consumer -- or a reviewer skimming the mandated field name -- read 'no approvals required' (second review, M3). They record two DIFFERENT things and the distinction is load-bearing. `obtained` holds DECISION RULINGS: answers the owner gave in-session to explicit questions naming the alternatives, authorizing the decisions the ADRs record. `required` holds ROLE-SCOPED SIGN-OFFS: reviews of the resulting artifacts, of which NONE has been performed. The owner holds every role (docs/00-meta/authority-index.md), so both statements are true at once -- but a ruling on a question is not a review of a diff. UPDATE: the owner posted the C3/M6/M7 records directly on PR #1, so those three no longer sit in `required` -- they are closed by an owner-authored artifact rather than by implementer prose, which was the whole objection.",
     "decision_rulings_obtained": "See `obtained` above.",
     "role_scoped_signoffs_required": "See `required` above.",
     "role_scoped_signoffs_obtained": []
   },
   "known_limitations": [
     "Role-scoped sign-offs: NONE obtained. Decision rulings D1-D9 were given in-session; a ruling on a question is not a review of a diff. Architecture, Security/Release, Data/Licensing and Merge reviewer all remain outstanding, and the owner has agreed to record the C3 licensing ruling and the M6/M7 scope and 14.2 deviations on PR #1 directly.",
-    "scripts/verify.ps1 -Scope Full has NOT been re-run against this head. It is a ~32-minute Windows job and this push is the run that will cover it; the recorded pass is against 6478c24. CI is authoritative on the true final commit (12.8).",
+    "scripts/verify.ps1 -Scope Full is NOT ESTABLISHED as passing anywhere. Prior greens predate ADR-009 and came from a script that could not fail. This push is the first run of the fixed script; until it completes, the merge-authoritative gate has never been observed genuinely passing. CI is authoritative on the true final commit (12.8).",
+    "Two fail-opens were found by the implementer in this round, both invisible to CI's own conclusion and to two adversarial reviews: the Windows gate discarded exit codes, and the secret scanner examined zero files on Windows. Both are fixed and regression-tested. The general lesson is recorded in ADR-001 D5: freezing a check list is not the same as trusting it.",
+    "scripts/check-verify-parity.sh does not read scripts/verify.ps1, so nothing cross-checks the PowerShell implementation against the other two. That is why ADR-009's defect was invisible to the parity guard. Extending it is a P1-11 follow-up.",
     "An evidence manifest structurally cannot record the SHA of its own commit. This one attests to the code head; the commit carrying it follows and is not self-covered.",
     "Review finding M10 from round 1 (Flutter/Dart analysis) and app/pubspec.lock are NOT done. pubspec.lock is BLOCKED, not deferred: Flutter is not installed in this environment and a hand-written lockfile would be a fabrication.",
     "`just verify` is not offline: cargo audit fetches the RustSec advisory database over the network on every run. Accepted and recorded in ADR-002; the compile-and-test path is genuinely offline and now has a CI regression gate proving it.",
@@ -352,6 +372,8 @@
     "The grid-alpha-opus5 environment still presets a stale DATABASE_URL (a /home/user/nfl-alpha path) that cannot be changed mid-session, so local commands override it explicitly. CI is unaffected -- the workflow sets DATABASE_URL at env: scope and the value it sets is correct."
   ],
   "follow_up": [
+    "P1-11: extend check-verify-parity.sh to cover scripts/verify.ps1, which no guard currently reads.",
+    "P1-01: a guard asserting every native command in verify.ps1 is followed by an exit-code assertion, so ADR-009's fix cannot silently regress when a command is added.",
     "P1-01 (blocking): write .claude/agents/ definitions before more agent-driven packages run. ADR-006 defers them with a good argument but concedes the gap; several of both reviews' findings are process findings, which is what that gap looks like in practice.",
     "P1-01: add a guard cross-checking the instruction files (CLAUDE.md, docs/CLAUDE.md, authority-index.md) against the ADRs they cite. Blocker C2 was a doc-vs-ADR contradiction no existing guard could catch, in a repository whose whole premise is that those files are trustworthy.",
     "P1-02: domain schema on 0002+. Retiring schema_meta by forward migration is pre-approved in ADR-002.",
@@ -365,13 +387,13 @@
     "Human: configure branch protection on main (an explicit P1-00 non-goal).",
     "Human: correct the grid-alpha-opus5 environment per ADR-002's contract."
   ],
-  "verification_status": "passed",
+  "verification_status": "passed_with_exceptions",
   "verification_summary": {
     "canonical_command": "just verify",
     "canonical_exit_status": 0,
     "total_recorded": 14,
-    "passed": 14,
+    "passed": 13,
     "failed": 0,
-    "not_run": 0
+    "not_run": 1
   }
 }

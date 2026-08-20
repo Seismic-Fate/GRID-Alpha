@@ -115,13 +115,25 @@ are recorded here, from evidence rather than assertion.
   version-skew hazard this ADR was itself created by (an unpinned CLI resolving 0.9 against a
   0.8 library).
 
-**Windows compatibility check.** Required because Windows is the production target
-(`final-build-spec.md` §3.2). Demonstrated empirically rather than asserted: `windows-latest`,
-alpha-ci run `32329932430` job `96308538400`, `scripts/verify.ps1 -Scope Full`, **PASSED** in
-32m12s — the full recipe chain including `cargo sqlx prepare --check --workspace`,
-`cargo nextest`, `cargo deny check` and `cargo audit` against sqlx 0.9 on Windows. Re-confirmed
-green on `de3b36c` in run `32332121205`. `sqlx-sqlite` uses the bundled SQLite C library and
-`rustls` rather than a system OpenSSL, so no Windows-specific native dependency is introduced.
+**Windows compatibility check — NOT YET ESTABLISHED.** Required because Windows is the
+production target (`final-build-spec.md` §3.2).
+
+An earlier revision of this section cited `windows-latest` run `32329932430`,
+`scripts/verify.ps1 -Scope Full`, PASSED in 32m12s, as empirical proof. **That citation is
+withdrawn.** ADR-009 establishes that `verify.ps1` discarded the exit code of every command it
+ran, so those greens show the recipe chain *executed* on Windows against sqlx 0.9 — they do not
+show it *passed*. Citing a gate that could not fail as compatibility evidence is exactly the
+"evidence over assertion" failure this project's §1.6 exists to prevent, and it was written into
+this ADR by the same implementer who then found the defect. Recorded plainly rather than quietly
+repaired.
+
+What still holds, on its own evidence: `sqlx-sqlite` uses the bundled SQLite C library and
+`rustls` rather than a system OpenSSL, so no Windows-specific native dependency is introduced —
+that is a property of the dependency graph (`Cargo.lock`, verified: 172 crates, zero `rsa`), not
+of a CI run.
+
+This item is re-recorded as satisfied only from a `windows-authoritative` run of the **fixed**
+`verify.ps1`. Owner ruling D11: withdraw and re-earn.
 
 **Not assessed:** long-term maintenance trajectory beyond the current release, which no
 snapshot can establish. `cargo audit` in the frozen `audit` recipe is the standing regression

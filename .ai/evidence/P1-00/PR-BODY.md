@@ -34,6 +34,7 @@ Each became an ADR with an owner ruling on the record.
 | **006** | §8.7/§9.2 deliverables absent without a recorded deviation |
 | **007** | §8.11's secret scanning, traceability and doctests absent from the canonical command |
 | **008** | `scripts/verify.sh` accepted any scope and exited 0 having run nothing |
+| **009** | `scripts/verify.ps1` — the §8.11 merge gate — discarded every command's exit code |
 
 ## Architecture, contract, schema, model, FFI impact
 
@@ -55,15 +56,16 @@ owner ruling recorded in its own ADR:
 + just check-guards                                   # ADR-007
 ```
 
-ADR-008 adds scope validation to `scripts/verify.sh` and **changes no command at all** — it
-replaces the argument dispatcher above the checks. `check-verify-parity.sh` confirms the
-justfile and `verify.sh` agree at **16 steps**, order-sensitively.
+ADR-008 (scope validation in `verify.sh`) and ADR-009 (exit-code propagation in `verify.ps1`)
+**change no command at all** — both fix the harness *around* the checks. `check-verify-parity.sh`
+confirms the justfile and `verify.sh` agree at **16 steps**, order-sensitively.
 
-**D5 has now been amended three times.** All three *increased* coverage: a gate that always
-errored during argument parsing became one that verifies cache freshness; two checks §8.11
-requires were absent from the canonical command; and an entry point that could pass without
-running now cannot. An amendment that *reduces* coverage should be refused outright rather than
-weighed against these.
+**D5 has now been amended four times.** All four *increased* coverage; none relaxed a check. Worth
+naming the pattern rather than just the count: **two of the four — 008 and 009 — were defects in
+the harness, not the checks.** An entry point that accepted any scope and ran nothing, and a merge
+gate that threw away every exit code. D5 froze the check list and left the code deciding whether a
+check counts unexamined; both fail-opens survived multiple green CI runs and two adversarial
+reviews. An amendment that *reduces* coverage should still be refused outright.
 
 ## Migration and rollback
 
@@ -80,10 +82,11 @@ against a blank database. Rollback: revert the branch — the database lives in 
 | `schema_meta_round_trips` | The applied version is derived from the migrator, not a hand-written literal that would go stale at `0002` |
 
 Three tests — the first in the repository, and the reason `cargo nextest run --workspace` can
-pass at all. **`tests/guards/run.sh` carries 35 committed behaviour cases** covering all six
+pass at all. **`tests/guards/run.sh` carries 38 committed behaviour cases** covering all six
 guard scripts and the `verify.sh` scope guard, run inside `just verify` (ADR-007).
 
-That suite has now caught four defects that reading did not. `check-secrets.sh` needed two
+That suite has now caught six defects that reading did not — including the two most serious in
+the branch, both found after the second review had finished. `check-secrets.sh` needed two
 fixes: it first ignored untracked files, then — found by the first adversarial review — **failed
 open** on an invalid git expression, reporting OK over a committed secret. Writing the parity
 cases for this round exposed that two silently-empty extractions would have compared equal, and
@@ -106,7 +109,7 @@ traceability fix was caught by the suite on its first run.
 
 ```text
 Work package:                    P1-00
-Final commit:                    a0a307affd86  (code head; the evidence commit follows
+Final commit:                    5492b9083b8d  (code head; the evidence commit follows
                                  and is not self-covered -- a manifest cannot record its own SHA)
 Model/harness identifier:        claude-opus-5 (project alias; provider id and harness version
                                  read from ai-toolchain.lock, per alpha-spec 1.3)
@@ -117,7 +120,7 @@ Authority documents read:        final-build-spec.md 2,3,7,8,19,21,22,23
                                  docs/CLAUDE.md; docs/00-meta/authority-index.md
                                  docs/01-work-packages/p1-00-work-package.md
                                  docs/adr/ (empty at authority-load time -- no ADRs existed;
-                                   the eight in docs/02-adr/ were written by this package)
+                                   the nine in docs/02-adr/ were written by this package)
 Contracts changed:               None. No FFI DTO, no provider schema, no model spec.
                                  New public API: grid-persistence::{schema_meta_value,
                                  applied_schema_version}. Workspace version unchanged
@@ -129,82 +132,89 @@ Dependencies changed:            sqlx 0.8 -> 0.9 (ADR-003, security). No crate a
 Targeted tests:                  cargo nextest run --workspace  -> 3 tests run, 3 passed, 0 skipped
                                  cargo test --workspace --doc   -> 12 crate targets, 0 doctests
                                  cargo test -p grid-ffi --features flutter-bridge-tests -> 0 tests, ok
-                                 ./tests/guards/run.sh          -> 35 passed, 0 failed
+                                 ./tests/guards/run.sh          -> 38 passed, 0 failed
 Canonical verification command:  just verify
-Verification exit status:        0, run against a0a307affd86 -- the commit this record
-                                 and the manifest both name. (An earlier revision recorded a run
-                                 against a commit three behind the head it attested to; second
-                                 review, M2.) Independently green in CI on the previous head,
-                                 run 32332121205, all three jobs.
+Verification exit status:        0, run against 5492b9083b8d -- the commit this record and the
+                                 manifest both name.
 Golden files changed:            N/A -- no golden files exist (P1-06)
 Performance evidence:            N/A -- no performance target is affected (no code to measure)
-Security/licensing review:       RUSTSEC-2023-0071 remediated (ADR-003), with 14.2's maintenance
-                                 assessment and Windows compatibility check now recorded there.
-                                 License corrected to MIT OR Apache-2.0 (ADR-001 D4).
+Security/licensing review:       RUSTSEC-2023-0071 remediated (ADR-003); Cargo.lock resolves 172
+                                 crates with zero rsa entries. 14.2's maintenance assessment is
+                                 recorded there. 14.2's WINDOWS COMPATIBILITY CHECK IS WITHDRAWN
+                                 and NOT YET ESTABLISHED: it cited a verify.ps1 run, and ADR-009
+                                 shows that script could not fail. License is MIT OR Apache-2.0
+                                 (ADR-001 D4), recorded by the owner on this PR.
                                  .claude/settings.json least-privilege profile AWAITS
                                  Security/Release owner approval.
 Fresh-context reviewer:          DONE, TWICE - independent adversarial agent, fresh context.
                                  Round 1 at 7787921 (PR #2): CONDITIONAL, 6 blockers, 10 major,
                                  9 minor. Round 2 at de3b36c (PR #3, comment on this PR):
                                  CONDITIONAL, 3 blockers, 9 major, 11 minor.
+                                 A THIRD ROUND IS WARRANTED: the two most serious defects in the
+                                 branch were found after round 2 finished, by the implementer,
+                                 and neither reviewer could have seen them -- CI reported green.
 Reviewer findings resolved:      Round 1: 6/6 blockers, 9/10 major, 8/9 minor.
-                                 Round 2: 2/3 blockers fixed outright and the third corrected on
-                                 the facts and referred to the owner; 8/9 major fixed, one
-                                 referred; 10/11 minor fixed or recorded, one deliberately not
-                                 changed with the reasoning written down. Every finding acted on
-                                 was reproduced first. All eight of the reviewer's questions are
-                                 answered in the manifest under review.round_2_disposition.
-Human approvals:                 TWO DIFFERENT THINGS, and the manifest's 8.12-mandated
-                                 human_approvals.required / .obtained fields are now populated
-                                 rather than empty (second review, M3).
-                                 DECISION RULINGS OBTAINED - answers the owner gave in-session to
-                                 explicit questions naming the alternatives:
+                                 Round 2: all 3 blockers closed (C3 by the owner's own record on
+                                 this PR); 9/9 major closed or owner-recorded; 10/11 minor fixed
+                                 or recorded, one deliberately not changed with reasoning.
+                                 SELF-FOUND after round 2, both fail-opens, both fixed:
+                                   verify.ps1 discarded every exit code (ADR-009)
+                                   check-secrets scanned zero files on Windows
+                                 Every finding acted on was reproduced first. All eight of the
+                                 reviewer's questions are answered in the manifest under
+                                 review.round_2_disposition.
+Human approvals:                 The manifest's 8.12-mandated human_approvals.required /
+                                 .obtained fields are populated, not empty.
+                                 DECISION RULINGS OBTAINED - answers the owner gave to explicit
+                                 questions naming the alternatives:
                                    D1 branch naming; D2 remediate skeleton inside P1-00;
                                    D3 numbered vault; D4 MIT OR Apache-2.0; D5 frozen recipes;
                                    D6 environment fix; D7 verify.sh scope guard (ADR-008);
-                                   D8 D4 stays, owner records the licensing ruling on this PR;
-                                   D9 owner records the M6/M7 deviations on this PR, no split;
+                                   D8/D9 owner records the licence and scope deviations here;
+                                   D10 verify.ps1 exit-code checks (ADR-009);
+                                   D11 withdraw and re-earn the Windows evidence;
                                    ADR-003; ADR-004; ADR-005; ADR-007.
-                                 ROLE-SCOPED SIGN-OFFS OBTAINED - none. A ruling on a question is
-                                 not a review of a diff. Still required:
-                                   Architecture owner  authority order, crate boundaries,
-                                                       the P1-02 -> P1-00 rework
+                                 OWNER-AUTHORED RECORD ON THIS PR - the permissive licence
+                                 (2565acc), the SQLx bootstrap moving P1-02 -> P1-00, and the
+                                 sqlx 0.8 -> 0.9 bump as a consequence. This closes C3, M6 and
+                                 M7, which needed an artifact implementer prose cannot supply.
+                                 ROLE-SCOPED SIGN-OFFS OBTAINED - none. Still required:
+                                   Architecture owner  authority order, crate boundaries
                                    Security/Release    .claude/settings.json
-                                   Data/Licensing      D4, outside P1-00's stated scope
                                    Merge reviewer      CI skeleton and the final diff
-                                 The owner holds every role per the authority index, so both
-                                 statements are true at once - but not interchangeable.
 Known limitations:               (1) Role-scoped sign-offs: NONE obtained.
-                                 (2) verify.ps1 -Scope Full has NOT been re-run against this
-                                     head. It is a ~32-minute Windows job and this push is the
-                                     run that covers it; the recorded pass is against 6478c24.
-                                     CI is authoritative on the true final commit (12.8).
-                                 (3) An evidence manifest cannot record its own commit SHA.
-                                 (4) Round 1's M10 (Flutter/Dart analysis) and app/pubspec.lock
+                                 (2) verify.ps1 -Scope Full is NOT ESTABLISHED as passing
+                                     ANYWHERE. Prior greens came from a script that could not
+                                     fail (ADR-009). This push is the first run of the fixed
+                                     script. CI is authoritative on the true final commit (12.8).
+                                 (3) Two fail-opens were found by the implementer AFTER round 2,
+                                     invisible to CI's own conclusion and to both reviewers.
+                                     Fixed and regression-tested. ADR-001 D5 records the lesson:
+                                     freezing a check list is not the same as trusting it.
+                                 (4) check-verify-parity.sh does not read verify.ps1, so nothing
+                                     cross-checks the PowerShell implementation. That is why the
+                                     parity guard could not have caught ADR-009's defect.
+                                 (5) An evidence manifest cannot record its own commit SHA.
+                                 (6) Round 1's M10 (Flutter/Dart analysis) and app/pubspec.lock
                                      are NOT done. pubspec.lock is BLOCKED not deferred: Flutter
                                      is not installed here; a hand-written lockfile would be a
                                      fabrication.
-                                 (5) just verify is not offline -- cargo audit fetches the
-                                     RustSec database. Accepted and recorded in ADR-002; the
-                                     compile-and-test path IS offline and now has a CI gate.
-                                 (6) -Scope Changed still unimplemented in both verify scripts
-                                     though 8.11 cites it as canonical. Deferred to P1-11 --
-                                     safer now that the argument reaching it is validated.
-                                 (7) justfile and verify.sh remain duplicate implementations;
-                                     unification barred by D5, drift guarded by the parity check,
-                                     which now has behaviour tests of its own.
-                                 (8) Cargo.toml, ai-toolchain.lock, rust-toolchain.toml and
-                                     justfile retain CRLF. ADR-004 now counts the workarounds
-                                     this costs and sets a threshold for escalating out of P1-11.
-                                 (9) No fixtures. 9.5 lists them under P1-00; deferred to
+                                 (7) just verify is not offline -- cargo audit fetches the
+                                     RustSec database. Accepted, recorded in ADR-002.
+                                 (8) -Scope Changed still unimplemented in both verify scripts
+                                     though 8.11 cites it as canonical. Deferred to P1-11.
+                                 (9) justfile and verify.sh remain duplicate implementations;
+                                     unification barred by D5, drift guarded by the parity check.
+                                (10) Cargo.toml, ai-toolchain.lock, rust-toolchain.toml and
+                                     justfile retain CRLF. ADR-004 counts the workarounds and
+                                     sets a threshold for escalating out of P1-11.
+                                (11) No fixtures. 9.5 lists them under P1-00; deferred to
                                      P1-03/P1-04 and recorded in ADR-001.
-                                (10) CI caching is deferred to P1-11 but is more than cosmetic:
-                                     an uncached ~32-minute Windows job that any push cancels is
-                                     a merge gate that is hard to observe passing.
-                                (11) The stale grid-alpha-opus5 environment is still uncorrected;
-                                     .env supplies correct values where the environment does not
-                                     override, so CI and fresh clones are unaffected.
-Evidence manifest hash:          sha256:4e6e00cee116cc6e53de634c217f35a1cd5a13629d58824418160f74cee72082
+                                (12) CI caching deferred to P1-11; an uncached ~25-minute Windows
+                                     job that any push cancels is hard to observe passing.
+                                (13) The stale grid-alpha-opus5 environment is still uncorrected;
+                                     .env supplies correct values where it does not override.
+Evidence manifest hash:          sha256:ff08d0799287e9fc17734cc74e51f74537b074359fb3609e780a9b05acba4522
                                  (.ai/evidence/P1-00/manifest.json)
 ```
 
@@ -261,10 +271,15 @@ technically forced under D5 — `cargo nextest` exits 4 on an empty workspace an
 independently confirmed — but necessity is not authorization, and ADR-001 already says a work
 package must not be the artifact authorizing exceeding itself.
 
-Per ruling D9 the branch is unchanged and the owner records both on this PR. What this branch
-*could* fix, it did: ADR-003 now carries §14.2's two missing checklist items, from evidence —
-a maintenance assessment (172 crates, zero `rsa`, footprint reduced, CLI now pinned) and a
-Windows compatibility check (`verify.ps1 -Scope Full` **PASSED** on `windows-latest`).
+**The owner has now recorded both on this PR**, which closes them. What this branch could fix, it
+did: ADR-003 carries §14.2's maintenance assessment, from evidence — 172 crates, zero `rsa`,
+dependency footprint reduced, CLI now pinned.
+
+**§14.2's Windows compatibility check is withdrawn and NOT re-established.** An earlier revision
+of this body and of ADR-003 cited `verify.ps1 -Scope Full` PASSING on `windows-latest` as that
+evidence. ADR-009 shows the script could not fail, so the citation proved execution, not passing —
+and it was written by the same implementer who then found the defect. It is re-recorded only from
+a run of the fixed script.
 
 ### Deliberately not changed
 
@@ -285,14 +300,16 @@ stated identically in three places; crate boundaries verified per-crate from the
 
 **Do not merge on the agent's authority** (§1.3, Appendix D). Outstanding:
 
-- **Owner-authored records on this PR** (rulings D8, D9): the Data/Licensing ruling on D4, and
-  the P1-02 → P1-00 scope amendment plus the §14.2 deviation. These are the artifacts two rounds
-  of review have asked for, and implementer prose cannot substitute for them.
+- ✅ **Owner-authored records — DONE.** The owner recorded on this PR: the permissive licence
+  per `2565acc`, the SQLx bootstrap moving P1-02 → P1-00, and the sqlx 0.8 → 0.9 bump as a
+  consequence of that fold-in. That closes C3, M6 and M7 with the artifact two review rounds
+  asked for and that no implementer-written ADR could substitute for.
 - **Role-scoped sign-offs — none obtained.** Security/Release on `.claude/settings.json`;
-  Data/Licensing on D4; Architecture on the rework; Merge reviewer on the final diff.
-- **CI must be green on this head.** `windows-authoritative` is authoritative for merge under
-  §8.11 and has not yet run against these commits. Previous head `de3b36c` was green on run
-  `32332121205`.
+  Architecture on the diff; Merge reviewer on the final diff.
+- **`windows-authoritative` has never been observed genuinely passing.** Every previous green
+  came from a `verify.ps1` that could not fail (ADR-009). This push is the first run of the fixed
+  script. Until it completes, the §8.11 merge gate has no established pass — and if it comes
+  back red, that is the gate working, not a regression.
 - **Governance:** reconcile `docs/05-sessions/` vs `docs/06-sessions/` before PRs #2 and #3
   merge, and fix the reviewer brief that keeps sending reviewers to a path the authority index
   calls invalid.
