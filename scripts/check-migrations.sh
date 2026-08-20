@@ -16,8 +16,19 @@ BASE="${1:-${BASE_REF:-origin/main}}"
 if ! git rev-parse --verify --quiet "${BASE}^{commit}" >/dev/null; then
     # Append-only is a property OF A DIFF; with no base there is nothing to diff against.
     # This is a genuine gap in coverage, not a pass — say so rather than printing OK.
+    #
+    # In CI it is not a skip either, it is a failure. The second adversarial review found this
+    # path running in both build jobs, which check out at fetch-depth 1 so origin/main does not
+    # exist: the guard printed a stderr notice and exited 0, and the merge-authoritative green
+    # therefore never included append-only verification. An exit 0 with a warning IS passing
+    # silently. Locally, a shallow or detached checkout is a legitimate reason to skip.
     echo "check-migrations: SKIP (NOT VERIFIED) base ref '$BASE' unresolvable, so append-only" \
          "could not be checked. CI always has a base; a local skip is not evidence." >&2
+    if [[ -n "${CI:-}" ]]; then
+        echo "check-migrations: FAIL running under CI with no resolvable base ref." \
+             "Give the job 'fetch-depth: 0' or pass an explicit base." >&2
+        exit 1
+    fi
     exit 0
 fi
 

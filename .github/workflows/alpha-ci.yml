@@ -73,16 +73,36 @@ jobs:
     name: linux-smoke
     runs-on: ubuntu-latest
     steps:
+      # fetch-depth 0: `just verify` runs the diff-based guards (ADR-007), and at the default
+      # depth 1 origin/main does not exist, so check-migrations and check-traceability could
+      # not verify anything. They now fail under CI rather than skipping, so this is required.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Install dev toolchain
+      # Versions are pinned in toolchains/dev-tools.lock and duplicated here because
+      # `cargo install` has no lockfile of its own. --locked pins a tool's DEPENDENCIES;
+      # only --version pins the tool. Keep the two files in step.
+      - name: Install dev toolchain (pinned — toolchains/dev-tools.lock)
         run: |
-          cargo install just --locked
-          cargo install cargo-nextest --locked
-          cargo install sqlx-cli --locked --no-default-features --features sqlite,rustls
-          cargo install cargo-deny --locked
-          cargo install cargo-audit --locked
-          cargo install typos-cli --locked
+          cargo install just            --locked --version 1.58.0
+          cargo install cargo-nextest   --locked --version 0.9.143
+          cargo install sqlx-cli        --locked --version 0.9.0 --no-default-features --features sqlite,rustls
+          cargo install cargo-deny      --locked --version 0.20.2
+          cargo install cargo-audit     --locked --version 0.22.2
+          cargo install typos-cli       --locked --version 1.49.0
+
+      - name: Record resolved tool versions
+        run: |
+          just --version; cargo nextest --version; sqlx --version
+          cargo deny --version; cargo audit --version; typos --version
+
+      # The property the whole committed-.sqlx design exists to provide (ADR-002) had never
+      # been exercised: every job sets DATABASE_URL at workflow scope and runs `just bootstrap`
+      # first, so query! always resolved against a live database. This reproduces a fresh
+      # clone. `-u` must precede assignments -- `env VAR=x -u OTHER` silently does not unset.
+      - name: Fresh clone compiles offline (regression gate for the .sqlx cache)
+        run: env -u DATABASE_URL SQLX_OFFLINE=true cargo check --workspace
 
       - name: Bootstrap (creates the local SQLite development database)
         run: just bootstrap
@@ -94,17 +114,30 @@ jobs:
     name: windows-authoritative
     runs-on: windows-latest
     steps:
+      # fetch-depth 0 for the same reason as linux-smoke. This is the 8.11 merge gate, so its
+      # green must include the governance guards, not merely the compile-and-test recipes.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Install dev toolchain
+      # Versions are pinned in toolchains/dev-tools.lock and duplicated here because
+      # `cargo install` has no lockfile of its own. --locked pins a tool's DEPENDENCIES;
+      # only --version pins the tool. Keep the two files in step.
+      - name: Install dev toolchain (pinned — toolchains/dev-tools.lock)
         shell: pwsh
         run: |
-          cargo install just --locked
-          cargo install cargo-nextest --locked
-          cargo install sqlx-cli --locked --no-default-features --features sqlite,rustls
-          cargo install cargo-deny --locked
-          cargo install cargo-audit --locked
-          cargo install typos-cli --locked
+          cargo install just            --locked --version 1.58.0
+          cargo install cargo-nextest   --locked --version 0.9.143
+          cargo install sqlx-cli        --locked --version 0.9.0 --no-default-features --features sqlite,rustls
+          cargo install cargo-deny      --locked --version 0.20.2
+          cargo install cargo-audit     --locked --version 0.22.2
+          cargo install typos-cli       --locked --version 1.49.0
+
+      - name: Record resolved tool versions
+        shell: pwsh
+        run: |
+          just --version; cargo nextest --version; sqlx --version
+          cargo deny --version; cargo audit --version; typos --version
 
       - name: Bootstrap
         shell: pwsh

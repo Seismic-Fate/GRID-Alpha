@@ -23,8 +23,15 @@ BASE="${1:-${BASE_REF:-origin/main}}"
 die() { echo "check-traceability: FAIL $*" >&2; exit 1; }
 
 if ! git rev-parse --verify --quiet "${BASE}^{commit}" >/dev/null; then
+    # Same fail-open-in-CI hazard as check-migrations: see the comment there. A shallow local
+    # checkout may skip; a CI job with no base ref is a misconfigured gate, not a passing one.
     echo "check-traceability: SKIP (NOT VERIFIED) base ref '$BASE' unresolvable, so no change" \
          "set could be derived. CI always has a base; a local skip is not evidence." >&2
+    if [[ -n "${CI:-}" ]]; then
+        echo "check-traceability: FAIL running under CI with no resolvable base ref." \
+             "Give the job 'fetch-depth: 0' or pass an explicit base." >&2
+        exit 1
+    fi
     exit 0
 fi
 
