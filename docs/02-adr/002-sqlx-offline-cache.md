@@ -104,6 +104,36 @@ on it.
 - `scripts/check-env-contract.sh` — the environment contract above.
 - `.sqlx/` and `crates/ffi/src/generated/` are listed as never-hand-edit in `CLAUDE.md`.
 
+## Accepted network dependency
+
+`cargo audit` fetches the RustSec advisory database over the network on every run
+(`Fetching advisory database from https://github.com/RustSec/advisory-db.git`), so the frozen
+`audit` recipe — and therefore `just verify` as a whole — is **not** offline. That sits
+awkwardly beside §8.11's clean-checkout framing and beside this ADR's own point that the
+committed `.sqlx` cache exists so a build needs no external service. Recorded as an accepted
+dependency rather than left to be rediscovered (second adversarial review, minor 5):
+
+- It is correct behaviour for an advisory scanner. A cached advisory database is a stale one,
+  and a security gate that reports yesterday's advisories is worth less than one that is slow.
+- It is scoped to `audit`. The compile-and-test recipes, and the `.sqlx` cache mechanism this
+  ADR is about, remain genuinely offline — `env -u DATABASE_URL SQLX_OFFLINE=true cargo check
+  --workspace` runs in CI as a regression gate for exactly that.
+- If the advisory fetch is ever unavailable, that is an environment failure to report, not a
+  reason to add an exceptions list.
+
+## The future of `schema_meta`
+
+`migrations/0001_schema_meta.sql` creates a table nothing currently reads for its own sake; it
+exists so `check-sqlx` and `test-rust` have something real to verify. Append-only enforcement
+(`scripts/check-migrations.sh`) means P1-02 inherits it permanently unless someone decides
+otherwise, and litigating that later is worse than pre-deciding it now (second adversarial
+review, minor 9):
+
+**Pre-approved:** P1-02 may retire `schema_meta` with a forward migration (`0002+` dropping or
+superseding it) if the domain schema work establishes a better version mechanism. That is not a
+violation of append-only — append-only forbids rewriting history, not superseding it forward.
+No further ruling is needed; recording the decision in P1-02's ADR is enough.
+
 ## Alternatives considered
 
 **Live database in CI, no committed cache.** Rejected: `final-build-spec.md` §8.2 explicitly

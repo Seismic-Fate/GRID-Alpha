@@ -2,8 +2,9 @@
 /target/
 **/*.rs.bk
 
-# Local development database (recreated by `just bootstrap`)
-/target/grid-dev.db*
+# The local development database lives at target/grid-dev.db and is therefore already
+# covered by /target/ above. It had its own redundant entry (second review, minor 7); the
+# location is documented here instead of re-ignored.
 
 # Ignored build/test output (alpha-spec 8.7)
 /artifacts/

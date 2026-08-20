@@ -25,6 +25,10 @@ for c in "${CRATES[@]}"; do mk "crates/$c/src"; done
 mk crates/ffi/src/generated
 mk crates/application/src/bin
 
+# data/ is gitignored (raw and derived provider data is never committed), so a fresh clone
+# and a bootstrapped tree differ by this one empty directory. That is intended: ingestion in
+# P1-03/P1-04 expects the mount point to exist, and creating it here is cheaper than every
+# later script having to. Second adversarial review, minor 8.
 echo "[bootstrap-repo] data and migrations"
 mk migrations
 mk data

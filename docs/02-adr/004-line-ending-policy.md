@@ -78,6 +78,24 @@ correctly, so there is no defect to fix, and excluding them keeps every diff in 
 minimal and reviewable. A mixed-line-ending repository is untidy; it is the lesser cost until
 P1-11 normalizes it in isolation.
 
+## Workaround count — track this
+
+The narrow scope means CRLF survives on `Cargo.toml`, `justfile`, `ai-toolchain.lock` and
+`rust-toolchain.toml`, and every tool that parses them has to cope. The deferral to P1-11 is
+still right — a blanket `text=auto` would rewrite every file and destroy the review trail for
+this branch — but the cost is not zero and is worth counting rather than asserting to be small
+(second adversarial review, minor 11):
+
+| Workaround | Location |
+|---|---|
+| `tr -d '\r'` before comparing justfile recipes | `scripts/check-verify-parity.sh` |
+| `tr -d '\r'` on the extracted `verify` chain targets | `scripts/check-verify-parity.sh` |
+| CRLF-preserving edits to CRLF documents | every tool that rewrites `docs/CLAUDE.md` et al. |
+
+Three today, in two files. **If this table reaches five, or a workaround appears in Rust or
+Dart source rather than in tooling, normalization stops being a P1-11 nicety and becomes its
+own work package.** The next contributor to add a row should say so on the PR.
+
 ## Compliance
 
 - `.gitattributes` — enforced by git on checkout and commit.
