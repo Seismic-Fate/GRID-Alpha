@@ -109,7 +109,7 @@ traceability fix was caught by the suite on its first run.
 
 ```text
 Work package:                    P1-00
-Final commit:                    a61c35300152  (code head; the evidence commit follows
+Final commit:                    6b7f3fd08107  (code head; the evidence commit follows
                                  and is not self-covered -- a manifest cannot record its own SHA)
 Model/harness identifier:        claude-opus-5 (project alias; provider id and harness version
                                  read from ai-toolchain.lock, per alpha-spec 1.3)
@@ -134,7 +134,7 @@ Targeted tests:                  cargo nextest run --workspace  -> 3 tests run, 
                                  cargo test -p grid-ffi --features flutter-bridge-tests -> 0 tests, ok
                                  ./tests/guards/run.sh          -> 42 passed, 0 failed
 Canonical verification command:  just verify
-Verification exit status:        0, run against a61c35300152 -- the commit this record and the
+Verification exit status:        0, run against 6b7f3fd08107 -- the commit this record and the
                                  manifest both name.
 Golden files changed:            N/A -- no golden files exist (P1-06)
 Performance evidence:            N/A -- no performance target is affected (no code to measure)
@@ -184,12 +184,13 @@ Human approvals:                 The manifest's 8.12-mandated human_approvals.re
                                    Security/Release    .claude/settings.json
                                    Merge reviewer      CI skeleton and the final diff
 Known limitations:               (1) Role-scoped sign-offs: NONE obtained.
-                                 (2) verify.ps1 -Scope Full is NOT ESTABLISHED as passing
-                                     under a gate proven capable of failing. Run 32382377066 was
-                                     green on the FIXED script but every command passed, so the
-                                     throw path was never exercised. The ADR-009 self-test step
-                                     lands with this push and is what closes it. CI is
-                                     authoritative on the true final commit (12.8).
+                                 (2) RESOLVED. verify.ps1 -Scope Full is ESTABLISHED as passing
+                                     under a gate proven capable of failing -- run 32415391750,
+                                     the ADR-009 self-test and the authoritative verification both
+                                     green in one job on 6b7f3fd. Withheld through three earlier
+                                     greens because the two halves sat in different runs of
+                                     different commits. CI is authoritative on the true final
+                                     commit (12.8).
                                  (3) THREE fail-opens were found by the implementer AFTER round 2,
                                      all invisible to CI's own conclusion and to both reviewers:
                                      the Windows gate discarded exit codes, the secret scanner
@@ -220,7 +221,7 @@ Known limitations:               (1) Role-scoped sign-offs: NONE obtained.
                                      job that any push cancels is hard to observe passing.
                                 (13) The stale grid-alpha-opus5 environment is still uncorrected;
                                      .env supplies correct values where it does not override.
-Evidence manifest hash:          sha256:589fa3645de08e7447b13ef1f6d20a480067a88771db76c380d9c439ed8bfaac
+Evidence manifest hash:          sha256:ebfe6f64689ce37247016572b222f47e32011573c0a763d054c20626cd0c5b1c
                                  (.ai/evidence/P1-00/manifest.json)
 ```
 
@@ -329,12 +330,18 @@ defect hid the second: the suite caught it and `verify.ps1` threw the verdict aw
 
 **And the fix for the first was itself unproven** — see below. Three in total.
 
-### What that cost, stated plainly
+### What that cost, and what it took to get back
 
-**Every `windows-authoritative` green before `a190e71` is withdrawn as evidence of passing** —
-including the one this body and ADR-003 previously cited as §14.2's Windows compatibility check.
-They show the steps *ran*. `verification_status` is `passed_with_exceptions` until a genuinely
-failing gate goes green.
+**Every `windows-authoritative` green before `a190e71` was withdrawn as evidence of passing** —
+including the one this body and ADR-003 had cited as §14.2's Windows compatibility check. They
+showed the steps *ran*. `verification_status` dropped to `passed_with_exceptions` and stayed
+there for **8 commits and 5 CI runs**, through three greens that would each have been easy to
+bank.
+
+**It is re-earned as of run `32415391750`** on `6b7f3fd` — the first run where the ADR-009
+self-test and the authoritative verification are green **in the same job on the same commit**.
+Three earlier greens were declined because the two halves of the proof sat in different runs of
+different commits, and combining them would have been the M2 defect wearing a different hat.
 
 ### And the fix itself had to be proven, not assumed
 
@@ -343,7 +350,7 @@ real mechanism. But **that green does not prove ADR-009 works**: every command p
 code ever needed propagating, and an inert `Assert-Ok` produces identical output. ADR-002's own
 argument — a gate that passes vacuously is a gate nobody has tested — applies to my fix too.
 
-Two things close it, and both are visible in CI:
+**Both are now closed, and visible in one CI run:**
 
 | | Proves |
 |---|---|
@@ -368,11 +375,12 @@ trusting it.
   asked for and that no implementer-written ADR could substitute for.
 - **Role-scoped sign-offs — none obtained.** Security/Release on `.claude/settings.json`;
   Architecture on the diff; Merge reviewer on the final diff.
-- **`windows-authoritative` has not yet been observed passing under a gate proven capable of
-  failing.** Run `32382377066` was green on the fixed script, but with everything passing it
-  exercised only the happy path. The **ADR-009 self-test** step added in `6a1b350bbdf4` is what closes
-  that; the evidence is re-recorded once a run carrying it is green. If that run comes back red,
-  the gate is working — read it that way before treating it as a regression.
+- ✅ **`windows-authoritative` has been observed passing under a gate proven capable of failing
+  — DONE.** Run `32415391750`, job `96575256117`: the **ADR-009 self-test** and **Authoritative
+  verification** both green, same job, same commit. `verification_status` is back to `passed`,
+  earned. The Windows log now shows `42 passed, 0 failed`, `16 guarded, 0 unguarded`, and
+  `check-secrets ... 6768 added line(s) from 80 changed file(s)` — the number that reads `0` when
+  the scanner is blind.
 - **A third adversarial review is warranted.** The three most serious defects in this branch
   were found after round 2 had finished, by the implementer, while CI reported green. The highest-value
   things to attack: whether `Assert-Ok` covers every path through `verify.ps1`, and whether the

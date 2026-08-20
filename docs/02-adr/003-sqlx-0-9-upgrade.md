@@ -115,8 +115,14 @@ are recorded here, from evidence rather than assertion.
   version-skew hazard this ADR was itself created by (an unpinned CLI resolving 0.9 against a
   0.8 library).
 
-**Windows compatibility check — NOT YET ESTABLISHED.** Required because Windows is the
-production target (`final-build-spec.md` §3.2).
+**Windows compatibility check — ESTABLISHED (run `32415391750`).** Required because Windows is
+the production target (`final-build-spec.md` §3.2). `scripts/verify.ps1 -Scope Full` passed on
+`windows-latest` in the same job where the **ADR-009 self-test** proved the script is capable of
+failing — the full recipe chain against sqlx 0.9, including `cargo sqlx prepare --check
+--workspace`, `cargo nextest`, `cargo deny` and `cargo audit`.
+
+That pairing is the point. The history below is kept rather than deleted, because the reason this
+item was withdrawn is more useful to a later reader than a clean assertion would be.
 
 An earlier revision of this section cited `windows-latest` run `32329932430`,
 `scripts/verify.ps1 -Scope Full`, PASSED in 32m12s, as empirical proof. **That citation is
@@ -132,8 +138,8 @@ What still holds, on its own evidence: `sqlx-sqlite` uses the bundled SQLite C l
 that is a property of the dependency graph (`Cargo.lock`, verified: 172 crates, zero `rsa`), not
 of a CI run.
 
-This item is re-recorded as satisfied only from a `windows-authoritative` run of the **fixed**
-`verify.ps1`. Owner ruling D11: withdraw and re-earn.
+Re-recorded from run `32415391750` on `6b7f3fd`, per owner ruling D11: withdraw and re-earn. It
+took four rounds and eight commits to get back what a single unexamined green had claimed.
 
 **Not assessed:** long-term maintenance trajectory beyond the current release, which no
 snapshot can establish. `cargo audit` in the frozen `audit` recipe is the standing regression
