@@ -23,7 +23,12 @@ done
 #
 # ORDER-SENSITIVE and duplicate-sensitive: an earlier revision ended in `sort -u`, so a
 # reordered or duplicated step was invisible. Review finding "minor 5".
-norm() { tr -d '\r' | sed -e 's/[[:space:]]\+/ /g' -e 's/^ //' -e 's/ $//' | grep -vE '^$'; }
+#
+# `|| true` on the extractions and on the final grep: with `set -euo pipefail` an empty extraction made grep exit 1
+# and killed the script with no diagnostic at all -- fail-closed by accident, exit 1 with an
+# empty message, and impossible to tell apart from a real drift. Empty extractions are now
+# tolerated by the pipeline and diagnosed explicitly below instead.
+norm() { tr -d '\r' | sed -e 's/[[:space:]]\+/ /g' -e 's/^ //' -e 's/ $//' | { grep -vE '^$' || true; }; }
 
 # Recipes the `verify` chain invokes, then the commands inside each of them.
 targets="$(awk '
@@ -40,7 +45,7 @@ just_cmds="$(for t in $targets; do
         inr && /^[^[:space:]]/ { inr = 0 }
         inr && /^[[:space:]]+[^#]/ { print }
     ' "$JUSTFILE"
-done | norm)"
+done | norm || true)"
 
 # Every command in verify.sh, not just cargo/typos: an earlier revision matched only those two
 # binaries, so a step invoking anything else was silently outside the comparison entirely.
@@ -48,7 +53,20 @@ done | norm)"
 sh_cmds="$(grep -vE '^[[:space:]]*(#|$)' "$VERIFY_SH" \
            | grep -vE '^[[:space:]]*(echo|set|if|fi|then|else|elif|SCOPE=|exit)\b' \
            | grep -vE '^#!' \
-           | grep -E '^[[:space:]]+[a-zA-Z._/]' | norm)"
+           | grep -E '^[[:space:]]+[a-zA-Z._/]' | norm || true)"
+
+# Two silently-empty extractions compare equal, so a broken parser would report agreement on
+# zero steps -- the same fail-open shape as the check-secrets defect this suite exists for.
+# This guard is load-bearing: D5 forbids unifying the two implementations, so this script is
+# the only thing keeping them in step. Second adversarial review, finding M8.
+for side in just:"$just_cmds" sh:"$sh_cmds"; do
+    if [[ -z "${side#*:}" ]]; then
+        echo "check-verify-parity: FAIL extracted ZERO commands from the ${side%%:*} side." >&2
+        echo "  The parser is broken, or a verification implementation is empty. Either way this" >&2
+        echo "  is not agreement: two empty lists compare equal and would report a false pass." >&2
+        exit 1
+    fi
+done
 
 if diff_out="$(diff <(printf '%s\n' "$just_cmds") <(printf '%s\n' "$sh_cmds"))"; then
     n=$(printf '%s\n' "$just_cmds" | grep -c . || true)
