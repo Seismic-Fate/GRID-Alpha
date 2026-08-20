@@ -73,15 +73,20 @@ against a blank database. Rollback: revert the branch — the database lives in 
 | `absent_key_is_none_not_an_error` | A missing key is `Ok(None)`, never conflated with failure (§12.7 forbids silent-default conversion) |
 
 These are the first tests in the repository and the reason `cargo nextest run --workspace` can
-pass at all. Six guard scripts are behaviour-tested against synthetic git ranges — including a
-false-negative found and fixed in `check-secrets.sh`, which initially ignored untracked files.
+pass at all. Six guard scripts are behaviour-tested against synthetic git ranges.
+
+`check-secrets.sh` needed two separate fixes, both found by testing rather than reading: it
+first ignored untracked files (most of this change set), and then — caught by the adversarial
+review — it **failed open** on an invalid git expression, reporting OK over a committed secret.
+Both are regression-tested.
 
 ## Data, licensing, security
 
 - **License corrected** to `MIT OR Apache-2.0` (ADR-001 D4); texts copied verbatim from canonical sources, not reproduced from memory.
 - **Security fix:** RUSTSEC-2023-0071 removed from the graph (ADR-003).
 - **`.claude/settings.json`** adds a least-privilege profile per §14.1 — **requires Security/Release owner approval.**
-- **No secrets committed.** `.env` holds only a credential-free relative SQLite path.
+- **No secrets committed.** `.env` holds a credential-free relative SQLite path plus
+  `SQLX_OFFLINE=true`, which is what lets a fresh clone compile against the committed cache.
 - **No new dependencies.** `sqlx` is a version bump of an existing declaration; no crate was added.
 - CI uses only `actions/checkout` — no third-party actions in a security-boundary file.
 
