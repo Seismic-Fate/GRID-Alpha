@@ -2,7 +2,7 @@
 adr-id: 001
 status: Accepted
 date: 2026-08-20
-deciders: Product/Architecture owner
+deciders: Product/Architecture owner (D1-D3, D5, D6); Data/Licensing owner (D4)
 supersedes:
 superseded-by:
 ---
@@ -56,9 +56,20 @@ This is a deviation from a level-2 document, so it is ratified by the product ow
 an ADR alone could not authorize it (§1.5).
 
 ### D4 — `MIT OR Apache-2.0` is the project license
-The GPL-3.0 `LICENSE` file was the error; `Cargo.toml` was correct. Replaced with the
-conventional Rust pair `LICENSE-MIT` + `LICENSE-APACHE`, texts copied verbatim from canonical
-sources rather than reproduced from memory.
+**Authority: Data/Licensing owner** (`alpha-spec.md` §1.4), not Product/Architecture. An earlier
+revision of this ADR attributed it to the wrong role; corrected after adversarial review.
+
+`LICENSE` (GPL-3.0) and `Cargo.toml` (`MIT OR Apache-2.0`) contradicted each other. The owner
+ruled `Cargo.toml` correct. Replaced with the conventional Rust pair `LICENSE-MIT` +
+`LICENSE-APACHE`, texts copied verbatim from canonical sources rather than reproduced from memory.
+
+**This was out of the work package's stated scope.** P1-00 lists neither licensing nor `LICENSE`
+in its Scope or acceptance criteria, and the change deletes a file the repository owner added in
+their own commit. It was surfaced during the authority load as a contradiction that `cargo deny`
+would gate on, put to the owner as an explicit choice, and made only on their ruling — but the
+scope deviation is real and is recorded here rather than glossed. A reviewer who considers
+licensing outside P1-00 can revert D4 alone: it touches only `LICENSE*` and no other decision
+depends on it.
 
 ### D5 — Verification recipes are a frozen contract
 The seven `justfile` recipes under `verify`, and the check bodies in `scripts/verify.sh` and

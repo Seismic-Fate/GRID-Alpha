@@ -58,8 +58,20 @@ SQLite error code 14.
 
 ```
 DATABASE_URL=sqlite:target/grid-dev.db    # correct: no // authority section
-SQLX_OFFLINE                              # unset locally; CI sets true against committed .sqlx
+SQLX_OFFLINE=true                         # offline by default; see below
 ```
+
+**Correction (adversarial review of PR #1).** This ADR originally said `SQLX_OFFLINE` should be
+*unset* locally. That inverted the ADR's own headline benefit. With `DATABASE_URL` set and
+`SQLX_OFFLINE` unset, the `query!` macro attempts a live connection, finds no database on a
+fresh clone, and fails with `E0282` — **the committed cache is never consulted**. Measured:
+`cargo check -p grid-persistence` exited **101** on a fresh clone; the same tree with
+`SQLX_OFFLINE=true` exited **0** in 0.35s, and with `.env` deleted entirely also exited 0.
+
+The committed `.env` therefore now sets **both**. `cargo sqlx prepare` overrides `SQLX_OFFLINE`
+for its own subprocess, so regenerating the cache still works. Verified end to end on a fresh
+tree: `cargo check`, `sqlx database create`, `sqlx migrate run`,
+`cargo sqlx prepare --check --workspace -- --lib` and `cargo nextest run --workspace` all exit 0.
 
 A committed `.env` supplies these **only when the variables are otherwise unset** — dotenv
 never overrides the real environment. An environment that presets `DATABASE_URL` silently
@@ -68,7 +80,7 @@ defeats the `.env` file, which is how this cost a full debugging cycle during P1
 
 ## Consequences
 
-**Easier.** Compilation needs no database. CI needs no service container. A clean checkout
+**Easier.** Compilation needs no database — genuinely, as of the `.env` correction above. CI needs no service container. A clean checkout
 builds offline. Migrations are exercised from the first work package rather than first
 appearing in P1-02.
 
