@@ -85,8 +85,8 @@ Three tests — the first in the repository, and the reason `cargo nextest run -
 pass at all. **`tests/guards/run.sh` carries 42 committed behaviour cases** covering all six
 guard scripts and the `verify.sh` scope guard, run inside `just verify` (ADR-007).
 
-That suite has now caught six defects that reading did not — including the two most serious in
-the branch, both found after the second review had finished. `check-secrets.sh` needed two
+That suite has now caught seven defects that reading did not — including the three most serious
+in the branch, all found after the second review had finished. `check-secrets.sh` needed two
 fixes: it first ignored untracked files, then — found by the first adversarial review — **failed
 open** on an invalid git expression, reporting OK over a committed secret. Writing the parity
 cases for this round exposed that two silently-empty extractions would have compared equal, and
@@ -150,16 +150,17 @@ Fresh-context reviewer:          DONE, TWICE - independent adversarial agent, fr
                                  Round 1 at 7787921 (PR #2): CONDITIONAL, 6 blockers, 10 major,
                                  9 minor. Round 2 at de3b36c (PR #3, comment on this PR):
                                  CONDITIONAL, 3 blockers, 9 major, 11 minor.
-                                 A THIRD ROUND IS WARRANTED: the two most serious defects in the
-                                 branch were found after round 2 finished, by the implementer,
+                                 A THIRD ROUND IS WARRANTED: the three most serious defects in
+                                 the branch were found after round 2 finished, by the implementer,
                                  and neither reviewer could have seen them -- CI reported green.
 Reviewer findings resolved:      Round 1: 6/6 blockers, 9/10 major, 8/9 minor.
                                  Round 2: all 3 blockers closed (C3 by the owner's own record on
                                  this PR); 9/9 major closed or owner-recorded; 10/11 minor fixed
                                  or recorded, one deliberately not changed with reasoning.
-                                 SELF-FOUND after round 2, both fail-opens, both fixed:
+                                 SELF-FOUND after round 2, all fail-opens, all fixed:
                                    verify.ps1 discarded every exit code (ADR-009)
                                    check-secrets scanned zero files on Windows
+                                   the ADR-009 fix was itself unproven (all-green run)
                                  Every finding acted on was reproduced first. All eight of the
                                  reviewer's questions are answered in the manifest under
                                  review.round_2_disposition.
@@ -241,7 +242,7 @@ gate, and a record that had drifted from the code.
 | **M2** | Six checkably-false statements; the canonical run predated HEAD by three commits | Fixed. Every number in this body re-derived from a command run against the attested head |
 | **M5** | The offline-compile property — the entire reason `.sqlx` is committed — was **never exercised by CI** | Fixed. Offline `cargo check` gate added, proven to pass on a forced macro re-expansion and to fail with `.sqlx` absent |
 | **M4** | Tooling unpinned in a repo whose thesis is pinned reproducibility; `deny.toml`'s own claim depended on it | Fixed. `toolchains/dev-tools.lock`; both jobs echo resolved versions. Verified `cargo-deny 0.20.2` honours the explicit keys with no warning |
-| **M8** | Parity and env-contract had no tests — and parity is load-bearing because D5 forbids unifying the two implementations | Fixed, and the worry was **understated**: two empty extractions compared equal, and the script did not even fail cleanly. Suite 12 → **35** cases |
+| **M8** | Parity and env-contract had no tests — and parity is load-bearing because D5 forbids unifying the two implementations | Fixed, and the worry was **understated**: two empty extractions compared equal, and the script did not even fail cleanly. Suite 12 → **42** cases |
 | **M9** | The permission profile had drifted from the justfile it enumerates | Fixed. Prefix forms that cannot fall behind |
 | **M3** | The §8.12-mandated `human_approvals.required` said no approvals are required | Fixed. Both mandated fields populated |
 
@@ -301,7 +302,7 @@ stated identically in three places; crate boundaries verified per-crate from the
 `.sqlx` cache integrity and the drift gate; the RUSTSEC remediation; the fail-closed rewrite of
 `check-secrets.sh`; migration hygiene; and every CI claim verified against the GitHub API.
 
-## Found after the review finished — two fail-opens, both mine
+## Found after the review finished — three fail-opens, all mine
 
 Neither reviewer could have found these. CI reported green.
 
@@ -325,6 +326,8 @@ all seven guards, `typos`. **ADR-009**, fourth D5 amendment.
 so the guard printed `OK no secret patterns found` over a committed `ghp_` token and a
 credentialed connection string. The five cases expecting exit 0 all passed *vacuously*. The first
 defect hid the second: the suite caught it and `verify.ps1` threw the verdict away.
+
+**And the fix for the first was itself unproven** — see below. Three in total.
 
 ### What that cost, stated plainly
 
@@ -370,8 +373,8 @@ trusting it.
   exercised only the happy path. The **ADR-009 self-test** step added in `6a1b350bbdf4` is what closes
   that; the evidence is re-recorded once a run carrying it is green. If that run comes back red,
   the gate is working — read it that way before treating it as a regression.
-- **A third adversarial review is warranted.** The two most serious defects in this branch were
-  found after round 2 had finished, by the implementer, while CI reported green. The highest-value
+- **A third adversarial review is warranted.** The three most serious defects in this branch
+  were found after round 2 had finished, by the implementer, while CI reported green. The highest-value
   things to attack: whether `Assert-Ok` covers every path through `verify.ps1`, and whether the
   empty-scan guards can themselves be fooled.
 - **Governance:** reconcile `docs/05-sessions/` vs `docs/06-sessions/` before PRs #2 and #3
