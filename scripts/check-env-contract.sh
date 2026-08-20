@@ -39,12 +39,29 @@ if [[ -n "$url" ]]; then
     else
         db="${url#sqlite:}"; db="${db%%\?*}"
         dir="$(dirname "$db")"
-        if [[ ! -d "$dir" ]]; then
-            fail "DATABASE_URL directory does not exist: $dir (from $src: $url)
-       Run 'just bootstrap' to create the development database."
+        # Contract vs. state. This guard answers "is DATABASE_URL well-formed and pointing
+        # somewhere this project owns?" — a question that is valid BEFORE `just bootstrap`
+        # has ever run. Whether the database file exists yet is bootstrap's business.
+        #
+        # A RELATIVE path is repo-relative and will be created by bootstrap, so a missing
+        # directory is a note, not a failure. An ABSOLUTE path that does not exist is the
+        # stale-configuration case this guard was written for and still fails.
+        if [[ "$db" = /* ]]; then
+            if [[ ! -d "$dir" ]]; then
+                fail "DATABASE_URL is an absolute path whose directory does not exist: $dir
+       (from $src: $url)
+       This is the stale-configuration signature: a leftover path from another project or
+       machine. Use the repo-relative form instead: $EXPECTED_URL"
+            else
+                echo "check-env-contract: OK DATABASE_URL=$url (from $src, absolute)"
+            fi
         else
-            echo "check-env-contract: OK DATABASE_URL=$url (from $src)"
-            [[ -f "$db" ]] || echo "check-env-contract: NOTE $db not created yet — run 'just bootstrap'"
+            echo "check-env-contract: OK DATABASE_URL=$url (from $src, repo-relative)"
+            if [[ ! -d "$dir" ]]; then
+                echo "check-env-contract: NOTE $dir/ not created yet — 'just bootstrap' will create it"
+            elif [[ ! -f "$db" ]]; then
+                echo "check-env-contract: NOTE $db not created yet — run 'just bootstrap'"
+            fi
         fi
     fi
 fi
