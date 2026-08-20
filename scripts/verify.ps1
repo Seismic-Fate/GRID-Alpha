@@ -20,12 +20,24 @@ if ($Scope -eq "Full" -or $Scope -eq "Changed") {
     Write-Host "[verify] Rust tests..."
     cargo nextest run --workspace
 
+    Write-Host "[verify] Doctests..."
+    cargo test --workspace --doc
+
     Write-Host "[verify] FFI round-trip..."
     cargo test -p grid-ffi --features flutter-bridge-tests
 
     Write-Host "[verify] Audit..."
     cargo deny check
     cargo audit
+
+    Write-Host "[verify] Repository guards..."
+    bash ./tests/guards/run.sh
+    bash ./scripts/check-migrations.sh
+    bash ./scripts/check-secrets.sh
+    bash ./scripts/check-traceability.sh
+    bash ./scripts/check-authority-sync.sh
+    bash ./scripts/check-verify-parity.sh
+    bash ./scripts/check-env-contract.sh
 
     Write-Host "[verify] Typos..."
     typos

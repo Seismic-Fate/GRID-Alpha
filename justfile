@@ -27,8 +27,10 @@ verify:
     just check-lint
     just check-sqlx
     just test-rust
+    just test-doc
     just test-ffi
     just audit
+    just check-guards
     just check-typos
 
 check-fmt:
@@ -43,12 +45,29 @@ check-sqlx:
 test-rust:
     cargo nextest run --workspace
 
+# nextest does not run doctests at all (ADR-007). Zero exist today; this keeps the gate
+# from going blind the moment P1-01 adds a doc example.
+test-doc:
+    cargo test --workspace --doc
+
 test-ffi:
     cargo test -p grid-ffi --features flutter-bridge-tests
 
 audit:
     cargo deny check
     cargo audit
+
+# alpha-spec.md 8.11 lists secret scanning and traceability as part of the verification
+# orchestration. Before ADR-007 these ran only in CI, so the canonical command provided
+# neither. BASE_REF lets CI pass the PR base; locally it defaults to origin/main.
+check-guards:
+    ./tests/guards/run.sh
+    ./scripts/check-migrations.sh
+    ./scripts/check-secrets.sh
+    ./scripts/check-traceability.sh
+    ./scripts/check-authority-sync.sh
+    ./scripts/check-verify-parity.sh
+    ./scripts/check-env-contract.sh
 
 check-typos:
     typos

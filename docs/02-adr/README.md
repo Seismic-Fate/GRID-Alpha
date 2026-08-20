@@ -23,3 +23,4 @@ Start from `docs/99-templates/template-adr.md`.
 | [004](004-line-ending-policy.md) | Line-ending policy | Accepted | 2026-08-20 |
 | [005](005-check-sqlx-workspace-flag.md) | Amend check-sqlx with --workspace | Accepted | 2026-08-20 |
 | [006](006-deferred-deliverables.md) | Deferred 8.7/9.2 deliverables | Accepted | 2026-08-20 |
+| [007](007-verify-covers-guards-and-doctests.md) | verify covers guards and doctests | Accepted | 2026-08-20 |

@@ -17,12 +17,24 @@ if [[ "$SCOPE" == "full" || "$SCOPE" == "changed" ]]; then
     echo "[verify] Rust tests..."
     cargo nextest run --workspace
 
+    echo "[verify] Doctests..."
+    cargo test --workspace --doc
+
     echo "[verify] FFI round-trip..."
     cargo test -p grid-ffi --features flutter-bridge-tests
 
     echo "[verify] Audit..."
     cargo deny check
     cargo audit
+
+    echo "[verify] Repository guards..."
+    ./tests/guards/run.sh
+    ./scripts/check-migrations.sh
+    ./scripts/check-secrets.sh
+    ./scripts/check-traceability.sh
+    ./scripts/check-authority-sync.sh
+    ./scripts/check-verify-parity.sh
+    ./scripts/check-env-contract.sh
 
     echo "[verify] Typos..."
     typos
