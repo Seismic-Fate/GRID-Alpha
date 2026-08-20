@@ -96,7 +96,7 @@ Both are regression-tested.
 
 ```text
 Work package:                    P1-00
-Final commit:                    18c8fb72b2e7
+Final commit:                    6478c24d0168  (all three alpha-ci jobs green)
                                  (code head; the evidence commit follows, not self-covered)
 Model/harness identifier:        claude-opus-5 (project alias; provider id and harness version
                                  read from ai-toolchain.lock, per alpha-spec 1.3)
@@ -116,7 +116,8 @@ Targeted tests:                  cargo test -p grid-persistence --lib   -> 2 pas
                                  cargo test -p grid-ffi --features flutter-bridge-tests -> 0 tests, ok
                                  6 guard scripts behaviour-tested on synthetic git ranges
 Canonical verification command:  just verify
-Verification exit status:        0
+Verification exit status:        0  (local, and independently in CI: all three
+                                 alpha-ci jobs green on run 32329932430)
 Golden files changed:            N/A — no golden files exist (P1-06)
 Performance evidence:            N/A — no performance target is affected (no code to measure)
 Security/licensing review:       RUSTSEC-2023-0071 remediated (ADR-003). License corrected to
@@ -124,8 +125,10 @@ Security/licensing review:       RUSTSEC-2023-0071 remediated (ADR-003). License
                                  least-privilege profile AWAITS Security/Release owner approval.
 Fresh-context reviewer:          DONE - independent adversarial agent, PR #2.
                                  Verdict CONDITIONAL: 6 blockers, 10 major, 9 minor.
-Reviewer findings resolved:      6/6 blockers + highest-value major, each reproduced
-                                 before fixing. Remaining major/minor NOT triaged.
+Reviewer findings resolved:      TRIAGE COMPLETE. 6/6 blockers, 9/10 major, 8/9 minor, each
+                                 reproduced before acting. M4/M5 process objections recorded
+                                 rather than argued away. Answers to the reviewer's seven
+                                 questions posted on PR #2; re-review requested.
 Human approvals:                 TWO DIFFERENT THINGS, previously conflated (review finding C5).
                                  DECISION RULINGS OBTAINED - given by the owner in-session, each
                                  answering an explicit question naming the alternatives:
@@ -141,12 +144,14 @@ Human approvals:                 TWO DIFFERENT THINGS, previously conflated (rev
                                    Merge reviewer      CI skeleton and the final diff
                                  The owner holds every role per the authority index, so both
                                  statements are true at once - but not interchangeable.
-Known limitations:               (1) scripts/verify.ps1 -Scope Full NOT RUN - authoritative for
-                                     merge but Windows-only; has never completed anywhere.
-                                 (2) Remaining 10 major / 9 minor review findings NOT triaged.
-                                     Only the 6 blockers and the top major are resolved.
+Known limitations:               (1) Role-scoped sign-offs: NONE obtained. A ruling on a
+                                     question is not a review of a diff.
+                                 (2) M10's Flutter/Dart analysis and app/pubspec.lock are NOT
+                                     done. pubspec.lock is BLOCKED not deferred: Flutter is not
+                                     installed here; a hand-written lockfile would be a
+                                     fabrication.
                                  (3) An evidence manifest cannot record its own commit SHA. It
-                                     attests to 18c8fb72b2e7; the manifest commit follows.
+                                     attests to 6478c24d0168, where all three CI jobs are green; the manifest commit follows.
                                      CI is authoritative on the true final commit (12.8).
                                  (4) -Scope Changed still unimplemented in both verify scripts
                                      though 8.11 cites it as canonical. Deferred to P1-11.
@@ -159,7 +164,7 @@ Known limitations:               (1) scripts/verify.ps1 -Scope Full NOT RUN - au
                                  (8) The stale grid-alpha-opus5 environment is still uncorrected;
                                      .env now supplies correct values when the environment does
                                      not override, so CI and fresh clones are unaffected.
-Evidence manifest hash:          sha256:77268a670a5829821cb7c0336d781c44867272b172f0fdbfe792cc7cb1f7ff86
+Evidence manifest hash:          sha256:fd46a0bb8f8d170246ad8bc16b9404741de89636472341ce57042d6b83d3476b
                                  (.ai/evidence/P1-00/manifest.json)
 ```
 
@@ -179,8 +184,11 @@ and dispositions are in the evidence manifest under `review`, per §8.12.
 | **C5** | Approvals read as contradictory: role sign-offs "not obtained" beside ADRs asserting owner acceptance | Fixed. Rulings and sign-offs separated; a ruling on a question is not a review of a diff |
 | **C6** | Licence change out of stated scope, attributed to the wrong role | Fixed. Re-attributed to Data/Licensing owner; scope deviation recorded. D4 touches only `LICENSE*` and is independently revertible |
 
-**The remaining major and minor findings are not yet triaged** — outstanding work on this PR,
-recorded as a known limitation rather than quietly closed.
+**Triage complete: 6/6 blockers, 9/10 major, 8/9 minor.** M4 and M5's process objections are
+recorded rather than "fixed" — ADR-003's argument that disclosure satisfies §14.2 is withdrawn,
+and ADR-001 now states that a work package must not be the artifact authorizing exceeding
+itself. Not done: M10's Flutter/Dart analysis (no Dart source exists) and `app/pubspec.lock`
+(**blocked** — Flutter is not installed). Answers to the seven questions are on PR #2.
 
 The reviewer also confirmed what holds: the §1.5 authority-order correction, ADR-004's
 whitespace-only claim for `verify.sh`, the manifest hash, a 172-crate licence census against
@@ -202,8 +210,11 @@ time, inherent to the ordering. Per §12.8, **CI is authoritative on the true fi
 - **Triage of the remaining major and minor review findings** — the 6 blockers are fixed, the rest are not.
 - **Role-scoped sign-offs**: Security/Release on `.claude/settings.json`; Data/Licensing on the
   out-of-scope D4 licence change; Merge reviewer on the final diff.
-- **`windows-authoritative` CI must pass** — `verify.ps1 -Scope Full` is authoritative for merge
-  and has never completed successfully anywhere.
+- ~~`windows-authoritative` CI must pass~~ — **DONE.** All three jobs green on run
+  `32329932430`: guards 6s, `linux-smoke` 16m48s, `windows-authoritative` **32m12s**.
+  `verify.ps1 -Scope Full`, authoritative for merge under §8.11, has now executed and passed —
+  the first completion anywhere. The previous 9 runs were cancelled by the implementer's own
+  pushes via `concurrency: cancel-in-progress`, never by a failure.
 
 Owner follow-ups: correct the `grid-alpha-opus5` environment per ADR-002, and configure branch
 protection on `main` (an explicit P1-00 non-goal).
