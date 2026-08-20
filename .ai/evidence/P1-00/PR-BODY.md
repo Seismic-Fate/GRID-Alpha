@@ -96,7 +96,7 @@ Both are regression-tested.
 
 ```text
 Work package:                    P1-00
-Final commit:                    bab9dfa3ab21892094a5f3d839d4ca95fc312b4c
+Final commit:                    18c8fb72b2e7
                                  (code head; the evidence commit follows, not self-covered)
 Model/harness identifier:        claude-opus-5 (project alias; provider id and harness version
                                  read from ai-toolchain.lock, per alpha-spec 1.3)
@@ -146,7 +146,7 @@ Known limitations:               (1) scripts/verify.ps1 -Scope Full NOT RUN - au
                                  (2) Remaining 10 major / 9 minor review findings NOT triaged.
                                      Only the 6 blockers and the top major are resolved.
                                  (3) An evidence manifest cannot record its own commit SHA. It
-                                     attests to 4de62ec774a6; the manifest commit follows.
+                                     attests to 18c8fb72b2e7; the manifest commit follows.
                                      CI is authoritative on the true final commit (12.8).
                                  (4) -Scope Changed still unimplemented in both verify scripts
                                      though 8.11 cites it as canonical. Deferred to P1-11.
@@ -159,8 +159,8 @@ Known limitations:               (1) scripts/verify.ps1 -Scope Full NOT RUN - au
                                  (8) The stale grid-alpha-opus5 environment is still uncorrected;
                                      .env now supplies correct values when the environment does
                                      not override, so CI and fresh clones are unaffected.
-Evidence manifest hash:          sha256:d90ccdc3f1471f2a9262cdd1ccd927f9a384d893fbe9d83c835a9469006cdeda
-                                 (.ai/evidence/P1-00/manifest.json — regenerate after commit)
+Evidence manifest hash:          sha256:77268a670a5829821cb7c0336d781c44867272b172f0fdbfe792cc7cb1f7ff86
+                                 (.ai/evidence/P1-00/manifest.json)
 ```
 
 ## Independent adversarial review — PR #2
@@ -174,7 +174,7 @@ and dispositions are in the evidence manifest under `review`, per §8.12.
 | **M1** | `check-secrets.sh` **failed open** — invalid empty-tree git expression, fatal swallowed by a fallback, printed OK having scanned nothing tracked | Fixed. Fails closed; regression-tested against a committed `ghp_` token with no `origin/main` |
 | **C1** | `just bootstrap` fails on a fresh checkout (SQLite code 14) | Already fixed in `d35a905`; CI reached the same diagnosis independently |
 | **C2** | Fresh clone would not compile: `.env` set `DATABASE_URL` without `SQLX_OFFLINE`, so the committed cache was never consulted (exit 101) | Fixed. ADR-002 corrected — it had stated the opposite |
-| **C3** | Manifest attested to a commit 4 behind HEAD, two of them touching CI-gating code | Fixed. Regenerated against `bab9dfa` |
+| **C3** | Manifest attested to a commit 4 behind HEAD, two of them touching CI-gating code | Fixed. Regenerated against `18c8fb7` |
 | **C4** | PR body claimed `commit_info.state` reads `clean`; the artifact read `uncommitted: 3 path(s)` | Fixed. **I asserted what I intended the artifact to say without re-reading it.** Removed |
 | **C5** | Approvals read as contradictory: role sign-offs "not obtained" beside ADRs asserting owner acceptance | Fixed. Rulings and sign-offs separated; a ruling on a question is not a review of a diff |
 | **C6** | Licence change out of stated scope, attributed to the wrong role | Fixed. Re-attributed to Data/Licensing owner; scope deviation recorded. D4 touches only `LICENSE*` and is independently revertible |
@@ -190,7 +190,7 @@ only indirectly; it is confirmed directly here (`cargo audit` exit 0).
 
 ## Commit sequencing
 
-An evidence manifest cannot record the SHA of its own commit. This one attests to **`bab9dfa`**,
+An evidence manifest cannot record the SHA of its own commit. This one attests to **`18c8fb7`**,
 the head of every code and documentation change; the manifest commit follows it.
 `commit_info.state` reads `uncommitted: 1 path(s)` — the manifest file itself at generation
 time, inherent to the ordering. Per §12.8, **CI is authoritative on the true final commit.**

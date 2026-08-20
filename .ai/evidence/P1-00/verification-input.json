@@ -5,9 +5,9 @@
         "command": "just verify",
         "environment": "Linux; DATABASE_URL=sqlite:target/grid-dev.db, SQLX_OFFLINE unset",
         "exit_status": 0,
-        "summary": "All 7 frozen recipes passed against 3ad054bae223, with .env supplying DATABASE_URL=sqlite:target/grid-dev.db and SQLX_OFFLINE=true. cargo nextest: 2 tests run, 2 passed, 0 skipped.",
+        "summary": "All 7 frozen recipes passed against 18c8fb72b2e7, .env supplying DATABASE_URL=sqlite:target/grid-dev.db and SQLX_OFFLINE=true. cargo nextest: 2 tests run, 2 passed, 0 skipped.",
         "canonical": true,
-        "run_against_commit": "3ad054bae223649191481fd04f59fb34c624e583"
+        "run_against_commit": "18c8fb72b2e7af02086dded814a34b235b99eb33"
       },
       {
         "command": "just verify (clean tree, no target/, 76 files)",
@@ -166,7 +166,7 @@
     "The justfile and scripts/verify.sh remain duplicate implementations; unification is barred by D5, so drift is guarded by check-verify-parity.sh instead.",
     "Cargo.toml, ai-toolchain.lock, rust-toolchain.toml and justfile retain CRLF. They parse correctly; repo-wide normalization is deferred to P1-11 (ADR-004).",
     "No fixtures are delivered. alpha-spec.md 9.5 lists them under P1-00; deferred to P1-03/P1-04 and recorded in ADR-001 rather than accepted silently.",
-    "An evidence manifest structurally cannot record the SHA of its own commit. This one attests to 3ad054bae223, the head of every code and documentation change; the manifest commit itself follows and is not covered. CI is authoritative on the true final commit (12.8).",
+    "An evidence manifest structurally cannot record the SHA of its own commit. This one attests to 18c8fb72b2e7, the branch head at generation time; the commit carrying the manifest follows it and is not self-covered. CI is authoritative on the true final commit (12.8).",
     "The adversarial review at 7787921 raised 6 blockers, 10 major and 9 minor findings. The 6 blockers and the highest-value major are resolved and recorded above; the remaining major and minor findings have NOT yet been triaged and are outstanding work on this PR.",
     "windows-authoritative CI has never completed successfully anywhere. verify.ps1 -Scope Full remains unexecuted, and it is authoritative for merge (8.11)."
   ],
