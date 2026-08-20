@@ -140,9 +140,12 @@ Golden files changed:            N/A -- no golden files exist (P1-06)
 Performance evidence:            N/A -- no performance target is affected (no code to measure)
 Security/licensing review:       RUSTSEC-2023-0071 remediated (ADR-003); Cargo.lock resolves 172
                                  crates with zero rsa entries. 14.2's maintenance assessment is
-                                 recorded there. 14.2's WINDOWS COMPATIBILITY CHECK IS WITHDRAWN
-                                 and NOT YET ESTABLISHED: it cited a verify.ps1 run, and ADR-009
-                                 shows that script could not fail. License is MIT OR Apache-2.0
+                                 recorded there. 14.2's WINDOWS COMPATIBILITY CHECK IS
+                                 ESTABLISHED: run 32415391750 on 6b7f3fd, where verify.ps1
+                                 -Scope Full passed on windows-latest in the SAME job as the
+                                 ADR-009 self-test proving that script can fail. The earlier
+                                 citation (run 32329932430) stays withdrawn and is not the
+                                 basis for this one. License is MIT OR Apache-2.0
                                  (ADR-001 D4), recorded by the owner on this PR.
                                  .claude/settings.json least-privilege profile AWAITS
                                  Security/Release owner approval.
@@ -282,11 +285,13 @@ package must not be the artifact authorizing exceeding itself.
 did: ADR-003 carries §14.2's maintenance assessment, from evidence — 172 crates, zero `rsa`,
 dependency footprint reduced, CLI now pinned.
 
-**§14.2's Windows compatibility check is withdrawn and NOT re-established.** An earlier revision
-of this body and of ADR-003 cited `verify.ps1 -Scope Full` PASSING on `windows-latest` as that
-evidence. ADR-009 shows the script could not fail, so the citation proved execution, not passing —
-and it was written by the same implementer who then found the defect. It is re-recorded only from
-a run of the fixed script.
+**§14.2's Windows compatibility check was withdrawn, then re-established from a different run.**
+An earlier revision of this body and of ADR-003 cited `verify.ps1 -Scope Full` PASSING on
+`windows-latest` as that evidence. ADR-009 shows the script could not fail, so that citation
+proved execution, not passing — and it was written by the same implementer who then found the
+defect. It was re-recorded only once a run of the *fixed* script was green alongside a self-test
+proving the gate can fail: run `32415391750` on `6b7f3fd`. ADR-003 keeps the withdrawal in place
+rather than overwriting it with a clean assertion.
 
 ### Deliberately not changed
 
