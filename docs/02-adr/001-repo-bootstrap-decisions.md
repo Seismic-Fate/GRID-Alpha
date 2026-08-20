@@ -63,18 +63,44 @@ revision of this ADR attributed it to the wrong role; corrected after adversaria
 ruled `Cargo.toml` correct. Replaced with the conventional Rust pair `LICENSE-MIT` +
 `LICENSE-APACHE`, texts copied verbatim from canonical sources rather than reproduced from memory.
 
-**This was out of the work package's stated scope.** P1-00 lists neither licensing nor `LICENSE`
-in its Scope or acceptance criteria, and the change deletes a file the repository owner added in
-their own commit. It was surfaced during the authority load as a contradiction that `cargo deny`
-would gate on, put to the owner as an explicit choice, and made only on their ruling — but the
-scope deviation is real and is recorded here rather than glossed. A reviewer who considers
-licensing outside P1-00 can revert D4 alone: it touches only `LICENSE*` and no other decision
-depends on it.
+**Both sides of the contradiction were the owner's own commits, and the permissive one is the
+later.** Established from `origin/main` after the second adversarial review, which had read the
+permissive declaration as a `cargo new`-style scaffold artifact that beat a deliberate human act:
+
+| Commit | Author | Time | Act |
+|---|---|---|---|
+| `f71a241` | Ethan Nelson | 2026-08-19 16:05:08 | adds `LICENSE`, GPL-3.0 |
+| `2565acc` | Ethan Nelson | 2026-08-19 16:35:13 | adds `Cargo.toml` declaring `license = "MIT OR Apache-2.0"` (line 22) |
+
+`git merge-base --is-ancestor f71a241 2565acc` confirms the order. `main` shipped a
+self-contradiction between two commits by the same person thirty minutes apart; D4 resolved it
+toward the more recent of the two. It is not a scaffold value displacing a human decision — it is
+one owner decision superseding another, ratified by the owner when the conflict was put to them.
+
+**The scope deviation is still real.** P1-00 lists neither licensing nor `LICENSE` in its Scope or
+acceptance criteria. It was surfaced during the authority load as a contradiction that
+`cargo deny` would gate on, put to the owner as an explicit choice, and made only on their ruling
+— but it is recorded here rather than glossed.
+
+**Relicensing is the one change in this branch that is not cleanly reversible in the real world.**
+Once published permissively, third parties may rely on it, and re-imposing copyleft afterwards
+needs every copyright holder's consent. §1.5 names licence uncertainty as an explicit stop
+condition. That property does not depend on who was right about the intent, so the second review's
+objection stands on its own even with the fact above corrected: a change of this class should rest
+on an artifact the Data/Licensing owner authored, not on implementer prose in an ADR. The owner's
+ruling is therefore recorded by the owner on PR #1. A reviewer who still considers licensing
+outside P1-00 can revert D4 alone: it touches only `LICENSE*` and no other decision depends on it.
 
 ### D5 — Verification recipes are a frozen contract
-The seven `justfile` recipes under `verify`, and the check bodies in `scripts/verify.sh` and
-`scripts/verify.ps1`, are **never edited to make a failure disappear**. Where a recipe cannot
-pass, the repository changes. Where it cannot be made to pass, work stops and escalates.
+The `justfile` recipes under `verify` — seven when this was ruled, nine since ADR-007 — and the
+check bodies in `scripts/verify.sh` and `scripts/verify.ps1`, are **never edited to make a
+failure disappear**. Where a recipe cannot pass, the repository changes. Where it cannot be made
+to pass, work stops and escalates.
+
+**Amended three times, each on an owner ruling recorded in its own ADR:** ADR-005 (`--workspace`
+on `check-sqlx`), ADR-007 (`test-doc` and `check-guards` added to the chain), ADR-008 (scope
+validation in `verify.sh`). All three *increased* coverage; none relaxed a check. An amendment
+that reduces coverage should be refused outright rather than weighed against these.
 
 Two consequences accepted deliberately:
 
@@ -140,6 +166,25 @@ Recorded in the work package as a dated amendment note:
 | Follow-up: "ADR-002 … to be resolved in P1-02" | "ADR-002 resolved in P1-00." |
 
 P1-02's substantive scope is untouched — only the toolchain bootstrap moved.
+
+### The work-package template is not byte-exact to Appendix B
+
+The P1-00 acceptance criterion says the template "follows the exact Appendix B structure", and
+`docs/99-templates/template-work-package.md` adds two things Appendix B does not contain: YAML
+frontmatter, and a `## Security and licensing considerations` section. Both are deliberate and
+both are traceable to a higher authority than the criterion:
+
+- **Frontmatter** — `docs/00-meta/dashboard.md` runs a Dataview query over hyphenated keys
+  (`work-package-id`, `status`, `risk-class`, …). Without them the dashboard cannot execute.
+- **Security and licensing** — `alpha-spec.md` §8.8's field list names "security/licensing
+  considerations" as a required work-package field; Appendix B's headings omit it. That is an
+  inconsistency inside the specification, not a choice this project gets to duck: §1.5 puts
+  the spec body and its appendix at the same level, and the safe reading of a conflict between
+  two same-level requirements is to satisfy both.
+
+Every Appendix B heading is present, verbatim and in order; the additions are additive.
+Recorded here so a reviewer does not have to rediscover the discrepancy and re-litigate it
+(second adversarial review, minor 10).
 
 ### Fixtures remain deferred
 `alpha-spec.md` §9.5 lists "fixtures" in P1-00 and §9.2 wants them before dependent
