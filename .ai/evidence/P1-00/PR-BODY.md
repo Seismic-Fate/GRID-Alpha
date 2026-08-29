@@ -35,6 +35,7 @@ Each became an ADR with an owner ruling on the record.
 | **007** | §8.11's secret scanning, traceability and doctests absent from the canonical command |
 | **008** | `scripts/verify.sh` accepted any scope and exited 0 having run nothing |
 | **009** | `scripts/verify.ps1` — the §8.11 merge gate — discarded every command's exit code |
+| **010** | Three of four blockers were second instances of a defect already fixed in the same file → where a fail-closed guard belongs |
 
 ## Architecture, contract, schema, model, FFI impact
 
@@ -68,6 +69,11 @@ gate that threw away every exit code. D5 froze the check list and left the code 
 check counts unexamined; both fail-opens survived multiple green CI runs and two adversarial
 reviews. An amendment that *reduces* coverage should still be refused outright.
 
+**Round 3 needed no fifth amendment**, and that is the same pattern seen from the other side:
+its blocker and three majors all landed in guard scripts, the guard suite, or CI — none of which
+D5 freezes. D5 protects *what is checked*; every recurring defect has been in *whether the
+checking code can see*.
+
 ## Migration and rollback
 
 `migrations/0001_schema_meta.sql` creates one table. Forward path `sqlx migrate run`, tested
@@ -100,7 +106,7 @@ traceability fix was caught by the suite on its first run.
 - **Security fix:** RUSTSEC-2023-0071 removed from the graph (ADR-003). Verified: `Cargo.lock` resolves 172 crates and contains zero `rsa` entries.
 - **Build tooling is pinned** in `toolchains/dev-tools.lock` and in both installers; both CI jobs echo their resolved versions. `--locked` pins a tool's dependencies, only `--version` pins the tool.
 - **`.claude/settings.json`** adds a least-privilege profile per §14.1 — **requires Security/Release owner approval.**
-- **No secrets committed.** `.env` holds a credential-free relative SQLite path plus `SQLX_OFFLINE=true`, which is what lets a fresh clone compile against the committed cache. That property is now a CI regression gate.
+- **No secrets committed.** `.env` holds a credential-free relative SQLite path plus `SQLX_OFFLINE=true`, which is what lets a fresh clone compile against the committed cache. That property is now a CI regression gate on **both** platforms.
 - **No new dependencies.** `sqlx` is a version bump of an existing declaration; no crate was added.
 - CI uses only `actions/checkout` — no third-party actions in a security-boundary file. `cargo audit`'s advisory-database fetch is a recorded, accepted network dependency (ADR-002).
 
@@ -110,7 +116,7 @@ traceability fix was caught by the suite on its first run.
 
 ```text
 Work package:                    P1-00
-Final commit:                    822af246925f  (the commit the manifest attests to; the
+Final commit:                    8d4320304f0c  (the commit the manifest attests to; the
                                  evidence commit carrying it follows and is not self-covered --
                                  a manifest cannot record its own SHA. Checked mechanically by
                                  scripts/check-evidence-claims.sh, not asserted.)
@@ -123,7 +129,7 @@ Authority documents read:        final-build-spec.md 2,3,7,8,19,21,22,23
                                  docs/CLAUDE.md; docs/00-meta/authority-index.md
                                  docs/01-work-packages/p1-00-work-package.md
                                  docs/adr/ (empty at authority-load time -- no ADRs existed;
-                                   the nine in docs/02-adr/ were written by this package)
+                                   the ten in docs/02-adr/ were written by this package)
 Contracts changed:               None. No FFI DTO, no provider schema, no model spec.
                                  New public API: grid-persistence::{schema_meta_value,
                                  applied_schema_version}. Workspace version unchanged
@@ -137,7 +143,7 @@ Targeted tests:                  cargo nextest run --workspace  -> 3 tests run, 
                                  cargo test -p grid-ffi --features flutter-bridge-tests -> 0 tests, ok
                                  ./tests/guards/run.sh          -> 54 passed, 0 failed
 Canonical verification command:  just verify
-Verification exit status:        0, run against 822af246925f -- the commit this record and the
+Verification exit status:        0, run against 8d4320304f0c -- the commit this record and the
                                  manifest both name.
 Golden files changed:            N/A -- no golden files exist (P1-06)
 Performance evidence:            N/A -- no performance target is affected (no code to measure)
@@ -167,13 +173,15 @@ Reviewer findings resolved:      Round 1: 6/6 blockers, 9/10 major, 8/9 minor.
                                  Round 2: all 3 blockers closed (C3 by the owner's own record on
                                  this PR); 9/9 major closed or owner-recorded; 10/11 minor fixed
                                  or recorded, one deliberately not changed with reasoning.
+                                 Round 3: 1/1 blocker, 3/3 major, 3/4 minor fixed; minor-4
+                                 answered with reasoning rather than changed.
                                  SELF-FOUND after round 2, all fail-opens, all fixed:
                                    verify.ps1 discarded every exit code (ADR-009)
                                    check-secrets scanned zero files on Windows
                                    the ADR-009 fix was itself unproven (all-green run)
-                                 Every finding acted on was reproduced first. All eight of the
-                                 reviewer's questions are answered in the manifest under
-                                 review.round_2_disposition.
+                                 Every finding acted on was reproduced first. The reviewers'
+                                 questions are answered in the manifest under
+                                 review.round_2_disposition and review.round_3_disposition.
 Human approvals:                 The manifest's 8.12-mandated human_approvals.required /
                                  .obtained fields are populated, not empty.
                                  DECISION RULINGS OBTAINED - answers the owner gave to explicit
@@ -234,9 +242,97 @@ Known limitations:               (1) Role-scoped sign-offs: NONE obtained.
                                      job that any push cancels is hard to observe passing.
                                 (13) The stale grid-alpha-opus5 environment is still uncorrected;
                                      .env supplies correct values where it does not override.
-Evidence manifest hash:          sha256:ab891c4309eaf7524baf6c83eb1fde2200d5a57beec94f67b8683c73c8dbc6c1
+                                (14) check-evidence-claims.sh re-derives NUMBERS from artifacts.
+                                     It cannot tell that a sentence has gone stale; two known
+                                     limitations and two narrative lines were falsified by round
+                                     3's own fixes while every numeric claim still matched.
+                                     Prose remains a manual sweep. Stated rather than implied,
+                                     because claiming otherwise would be the fail-open shape
+                                     ADR-010 is about.
+Evidence manifest hash:          sha256:0e9545c224cc43e0eb58e98e22d90dcbb99884a2924267863aa48b77d62c9826
                                  (.ai/evidence/P1-00/manifest.json)
 ```
+
+## Independent adversarial review — round 3, at `8e07b04`
+
+**CONDITIONAL: 1 blocker, 3 major, 4 minor.** Round 2's 3 blockers and 9 majors were re-checked
+by execution and all confirmed closed or owner-recorded. The reviewer also corrected their own
+round-2 C3 supporting fact after verifying the commit ordering. Full dispositions are in the
+manifest under `review.round_3_disposition`.
+
+**The finding that matters is about method, not code.** Three of the last four blockers were
+second instances of a defect already fixed elsewhere in the same file:
+
+> when a defect is found, the fix is being applied to the instance rather than swept for across
+> the file, and no mechanism enforces the sweep.
+
+That is right, and the blocker proves it — **and it was worse than the review found.** C1 was
+reported as a diff-mode gap in `check-secrets.sh`. Reproduced here, **both** arms fail open: in
+diff mode nothing checked the untracked scan, and in full-tree mode the round-2 call-site guard
+runs several lines *before* the untracked scan, so it only ever counted the tracked pass.
+
+```
+diff mode,      scan_files broken            -> exit 0, ghp_ token untouched
+full-tree mode, untracked scan broken alone  -> exit 0, same
+```
+
+So "give the diff arm the guard the full-tree arm has" was the wrong fix — a third patch to an
+instance. **The guard moved inside `scan_files`,** which now counts what it was handed, what it
+deliberately skipped, and what it opened, and refuses to return having opened nothing it cannot
+account for. Every caller is covered, including ones not yet written. `docs/02-adr/010` records
+the placement rule.
+
+| | Finding | Disposition |
+|---|---|---|
+| **C1** | `check-secrets.sh` fails open over untracked files | Fixed in **both** arms; guard moved into the function, redundant call-site guard removed. An all-binary set still passes, so the guard discriminates rather than refusing whenever it opened nothing |
+| **M1** | the `Assert-Ok` coverage analysis misses 6 of 7 command forms | Fixed. Rule inverted: a line is a command **unless** it is a recognised construct. Controls for all seven forms and twelve constructs |
+| **M2** | `verify.ps1` parity-checked against nothing, while being the merge gate | Fixed. Three-way parity. Verified "latent, not drifted" independently first — 16 commands, same order, all three |
+| **M3** | the self-test accepts any non-zero as proof, and covers `Assert-Ok` #1 of 16 | Fixed. Asserts on the specific message; a second run exercises the **last** assert and proves the other fifteen pass through on success |
+| **min-1** | "All 65 non-trivial paths traced" — actually 66, and outside the claim pass | Fixed as a **mechanism**: `scripts/check-evidence-claims.sh` |
+| **min-2** | no offline-compile step on `windows-authoritative` | Fixed |
+| **min-3** | the column-0 coupling was a comment, not an assertion | Fixed, with a control |
+| **min-4** | the manifest has never covered the head | Answered, deliberately not "fixed" — see below |
+
+**No fifth D5 amendment.** Every fix landed in a guard script, the guard suite, or CI — none of
+which D5 freezes. Parity still reports **16 steps**. That distinction is itself the pattern
+ADR-001 D5 names: D5 protects *what is checked*; the recurring defects have all been in *whether
+the checking code can see*.
+
+### Two things I got wrong on the way, since they shaped the fixes
+
+**My first reproduction of M1 was invalid.** Inserting the unguarded command directly after
+`cargo fmt` displaced *that* command's `Assert-Ok`, so the analysis flagged `cargo fmt` and all
+seven rows read CAUGHT — for the wrong reason. Inserting after a complete pair reproduces the
+reviewer's table exactly.
+
+**My first fix for M1 used `\b` as a word boundary.** In awk `\b` is a backspace, not a word
+boundary (gawk spells it `\y`; this runner is mawk 1.3.4), so the construct list matched nothing
+and `param(` and `if (...)` became false positives. Caught because the baseline moved from
+`16 guarded, 0 unguarded` to `16 guarded, 3 unguarded`.
+
+### What is proven where
+
+`verify.ps1` cannot be executed here — there is no PowerShell on this runner — so **M3's fix is
+proven by CI on `windows-latest`, not locally.** What was verified locally is that the two
+expected substrings match the real `Assert-Ok` labels and the throw format string, and the guard
+suite now asserts that coupling so a rename fails in milliseconds on Linux rather than 25
+minutes into the Windows job.
+
+### min-4 — answered, not fixed
+
+Generating the manifest in CI against the pushed head would make CI the author of its own
+evidence. The one-commit lag is structural, not a workflow defect. What *was* fixable is that
+the lag went unmeasured: `check-evidence-claims.sh` verifies the content claims independently of
+which commit they were written at, and deliberately **does not** assert `manifest.commit == HEAD`,
+because that would encode a falsehood as a rule.
+
+### What the claim checker still cannot see
+
+Its first run caught a stale `Final commit` reference the numeric claims had passed straight
+over, and a ninth claim now covers that. But four sentences in this record were falsified by
+round 3's own fixes while every number stayed correct — two known limitations and two narrative
+lines, all found by reading rather than by the tool. **Prose staleness is still a manual sweep**,
+and limitation (14) says so rather than leaving a reader to assume the record is self-verifying.
 
 ## Independent adversarial review — round 2, at `de3b36c`
 
@@ -253,8 +349,8 @@ gate, and a record that had drifted from the code.
 | **C2** | Both `CLAUDE.md` files said `SQLX_OFFLINE` unset, contradicting ADR-002, and claimed an enforcement the guard does not perform | Fixed in **three** files — `check-env-contract.sh` carried the same inversion in its own advice. The guard now resolves `SQLX_OFFLINE` the way `query!` does |
 | **C3** | Relicensing is irreversible, out of scope, and rests only on implementer prose | **The review's supporting fact is wrong**; see below. The irreversibility objection stands and the owner records the ruling on this PR (D8) |
 | **M1** | The §8.11 merge gate's green **excluded** append-only and traceability — both SKIPped at `fetch-depth: 1` and exited 0 | Fixed. `fetch-depth: 0` on both build jobs; both SKIP paths now **fail** under `$CI` while still skipping in a local shallow checkout |
-| **M2** | Six checkably-false statements; the canonical run predated HEAD by three commits | Fixed. Every number in this body re-derived from a command run against the attested head |
-| **M5** | The offline-compile property — the entire reason `.sqlx` is committed — was **never exercised by CI** | Fixed. Offline `cargo check` gate added, proven to pass on a forced macro re-expansion and to fail with `.sqlx` absent |
+| **M2** | Six checkably-false statements; the canonical run predated HEAD by three commits | Fixed. Every number in this body re-derived from a command run against the attested head — mechanically, since round 3 |
+| **M5** | The offline-compile property — the entire reason `.sqlx` is committed — was **never exercised by CI** | Fixed. Offline `cargo check` gate added, proven to pass on a forced macro re-expansion and to fail with `.sqlx` absent. On both platforms since round 3 |
 | **M4** | Tooling unpinned in a repo whose thesis is pinned reproducibility; `deny.toml`'s own claim depended on it | Fixed. `toolchains/dev-tools.lock`; both jobs echo resolved versions. Verified `cargo-deny 0.20.2` honours the explicit keys with no warning |
 | **M8** | Parity and env-contract had no tests — and parity is load-bearing because D5 forbids unifying the two implementations | Fixed, and the worry was **understated**: two empty extractions compared equal, and the script did not even fail cleanly. Suite 12 → **42** cases in round 2, **54** after round 3 |
 | **M9** | The permission profile had drifted from the justfile it enumerates | Fixed. Prefix forms that cannot fall behind |
@@ -275,7 +371,8 @@ scaffold-shaped value and against the human's explicit act."
 
 `git merge-base --is-ancestor f71a241 2565acc` confirms the order. `main` shipped a
 self-contradiction between two commits by one person thirty minutes apart; D4 resolved it toward
-the more recent. ADR-001 D4 now records this.
+the more recent. ADR-001 D4 now records this. **Round 3 verified this correction independently
+and withdrew its own round-2 supporting fact.**
 
 **The review's actual objection survives the correction and is not dismissed.** Relicensing is
 the one change here that cannot be undone in the real world, §1.5 names licence uncertainty as a
@@ -369,89 +466,16 @@ argument — a gate that passes vacuously is a gate nobody has tested — applie
 
 | | Proves |
 |---|---|
-| **ADR-009 self-test** step on `windows-authoritative` | Runs the real `verify.ps1` with a stub `cargo` that exits 7 and requires a non-zero exit. Fails loudly if the fix is ever inert |
+| **ADR-009 self-test** step on `windows-authoritative` | Runs the real `verify.ps1` with a stub `cargo` that exits 7 and requires the failure to name `[verify] FAILED: cargo fmt`. A second run stubs a *later* command so the last `Assert-Ok` is exercised too |
 | **`verify.ps1` exit-code coverage** case in the guard suite | Every native command is immediately followed by an `Assert-Ok` (16/16), with a mutation control proving the check can fail. Nothing else could catch this: parity compares WHICH commands each implementation runs — three-way since round 3 — never whether their exit codes are handled |
 
 The scanner's diff-mode branch also got the empty-scan guard its full-tree branch had, and both
-verdicts now state what they measured: `6561 added line(s) from 80 changed file(s)` rather than a
+verdicts now state what they measured: `7506 added line(s) from 82 changed file(s)` rather than a
 bare `OK`. That number reading `0` is what a fail-open looks like.
 
 **The pattern, recorded in ADR-001 D5.** Two of the four D5 amendments were defects in the
 *harness around* the checks, not in the checks. Freezing a check list is not the same as
 trusting it.
-
-## Independent adversarial review — round 3, at `8e07b04`
-
-**CONDITIONAL: 1 blocker, 3 major, 4 minor.** Round 2's 3 blockers and 9 majors were re-checked
-by execution and all confirmed closed or owner-recorded. The reviewer also corrected their own
-round-2 C3 supporting fact after verifying the commit ordering. Full dispositions are in the
-manifest under `review.round_3_disposition`.
-
-**The finding that matters is about method, not code.** Three of the last four blockers were
-second instances of a defect already fixed elsewhere in the same file:
-
-> when a defect is found, the fix is being applied to the instance rather than swept for across
-> the file, and no mechanism enforces the sweep.
-
-That is right, and the blocker proves it — **and it was worse than the review found.** C1 was
-reported as a diff-mode gap in `check-secrets.sh`. Reproduced here, **both** arms fail open: in
-diff mode nothing checked the untracked scan, and in full-tree mode the round-2 call-site guard
-runs several lines *before* the untracked scan, so it only ever counted the tracked pass.
-
-```
-diff mode,      scan_files broken            -> exit 0, ghp_ token untouched
-full-tree mode, untracked scan broken alone  -> exit 0, same
-```
-
-So "give the diff arm the guard the full-tree arm has" was the wrong fix — a third patch to an
-instance. **The guard moved inside `scan_files`,** which now counts what it was handed, what it
-deliberately skipped, and what it opened, and refuses to return having opened nothing it cannot
-account for. Every caller is covered, including ones not yet written. `docs/02-adr/010` records
-the placement rule.
-
-| | Finding | Disposition |
-|---|---|---|
-| **C1** | `check-secrets.sh` fails open over untracked files | Fixed in **both** arms; guard moved into the function, redundant call-site guard removed. An all-binary set still passes, so the guard discriminates rather than refusing whenever it opened nothing |
-| **M1** | the `Assert-Ok` coverage analysis misses 6 of 7 command forms | Fixed. Rule inverted: a line is a command **unless** it is a recognised construct. Controls for all seven forms and twelve constructs |
-| **M2** | `verify.ps1` parity-checked against nothing, while being the merge gate | Fixed. Three-way parity. Verified "latent, not drifted" independently first — 16 commands, same order, all three |
-| **M3** | the self-test accepts any non-zero as proof, and covers `Assert-Ok` #1 of 16 | Fixed. Asserts on the specific message; a second run exercises the **last** assert and proves the other fifteen pass through on success |
-| **min-1** | "All 65 non-trivial paths traced" — actually 66, and outside the claim pass | Fixed as a **mechanism**: `scripts/check-evidence-claims.sh` |
-| **min-2** | no offline-compile step on `windows-authoritative` | Fixed |
-| **min-3** | the column-0 coupling was a comment, not an assertion | Fixed, with a control |
-| **min-4** | the manifest has never covered the head | Answered, deliberately not "fixed" — see below |
-
-**No fifth D5 amendment.** Every fix landed in a guard script, the guard suite, or CI — none of
-which D5 freezes. Parity still reports **16 steps**. That distinction is itself the pattern
-ADR-001 D5 names: D5 protects *what is checked*; the recurring defects have all been in *whether
-the checking code can see*.
-
-### Two things I got wrong on the way, since they shaped the fixes
-
-**My first reproduction of M1 was invalid.** Inserting the unguarded command directly after
-`cargo fmt` displaced *that* command's `Assert-Ok`, so the analysis flagged `cargo fmt` and all
-seven rows read CAUGHT — for the wrong reason. Inserting after a complete pair reproduces the
-reviewer's table exactly.
-
-**My first fix for M1 used `\b` as a word boundary.** In awk `\b` is a backspace, not a word
-boundary (gawk spells it `\y`; this runner is mawk 1.3.4), so the construct list matched nothing
-and `param(` and `if (...)` became false positives. Caught because the baseline moved from
-`16 guarded, 0 unguarded` to `16 guarded, 3 unguarded`.
-
-### What is proven where
-
-`verify.ps1` cannot be executed here — there is no PowerShell on this runner — so **M3's fix is
-proven by CI on `windows-latest`, not locally.** What was verified locally is that the two
-expected substrings match the real `Assert-Ok` labels and the throw format string, and the guard
-suite now asserts that coupling so a rename fails in milliseconds on Linux rather than 25
-minutes into the Windows job.
-
-### min-4 — answered, not fixed
-
-Generating the manifest in CI against the pushed head would make CI the author of its own
-evidence. The one-commit lag is structural, not a workflow defect. What *was* fixable is that
-the lag went unmeasured: `check-evidence-claims.sh` verifies the content claims independently of
-which commit they were written at, and deliberately **does not** assert `manifest.commit == HEAD`,
-because that would encode a falsehood as a rule.
 
 ## Before merging
 
@@ -466,9 +490,7 @@ because that would encode a falsehood as a rule.
 - ✅ **`windows-authoritative` has been observed passing under a gate proven capable of failing
   — DONE.** Run `32415391750`, job `96575256117`: the **ADR-009 self-test** and **Authoritative
   verification** both green, same job, same commit. `verification_status` is back to `passed`,
-  earned. The Windows log now shows `42 passed, 0 failed`, `16 guarded, 0 unguarded`, and
-  `check-secrets ... 6768 added line(s) from 80 changed file(s)` — the number that reads `0` when
-  the scanner is blind.
+  earned.
 - ✅ **A third adversarial review — DONE**, at `8e07b04`: CONDITIONAL, 1 blocker, 3 major,
   4 minor, all closed above. Both questions I nominated turned out to have something in them:
   the `Assert-Ok` analysis missed six of seven command forms, and the diff-mode empty-scan guard

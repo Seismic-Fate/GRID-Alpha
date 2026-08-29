@@ -293,7 +293,8 @@
     "The justfile, scripts/verify.sh and scripts/verify.ps1 remain THREE duplicate implementations; unification is barred by D5, so drift is guarded three-way by check-verify-parity.sh since round 3 -- which has behaviour tests, including for a step missing from verify.ps1 alone and for the case where its own parser yields nothing.",
     "Cargo.toml, ai-toolchain.lock, rust-toolchain.toml and justfile retain CRLF. ADR-004 now counts the workarounds this costs and sets a threshold for escalating normalization out of P1-11.",
     "No fixtures are delivered. alpha-spec.md 9.5 lists them under P1-00; deferred to P1-03/P1-04 and recorded in ADR-001.",
-    "The grid-alpha-opus5 environment still presets a stale DATABASE_URL (a /home/user/nfl-alpha path) that cannot be changed mid-session, so local commands override it explicitly. CI is unaffected -- the workflow sets DATABASE_URL at env: scope and the value it sets is correct."
+    "The grid-alpha-opus5 environment still presets a stale DATABASE_URL (a /home/user/nfl-alpha path) that cannot be changed mid-session, so local commands override it explicitly. CI is unaffected -- the workflow sets DATABASE_URL at env: scope and the value it sets is correct.",
+    "scripts/check-evidence-claims.sh re-derives NUMBERS from artifacts. It cannot tell that a SENTENCE has gone stale: two known limitations and two narrative lines were falsified by round 3's own fixes while every numeric claim still matched, and all four were found by reading rather than by the tool. Claim 8 covers the one prose sentence carrying a machine-comparable value (the Final commit). Prose staleness otherwise remains a manual sweep -- stated rather than implied, because claiming the record is self-verifying would be the fail-open shape ADR-010 is about."
   ],
   "follow_up": [
     "P1-11: extend check-verify-parity.sh to cover scripts/verify.ps1, which no guard currently reads.",
