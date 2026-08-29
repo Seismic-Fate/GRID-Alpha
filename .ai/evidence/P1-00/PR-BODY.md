@@ -110,8 +110,10 @@ traceability fix was caught by the suite on its first run.
 
 ```text
 Work package:                    P1-00
-Final commit:                    26623a7906d8  (code head; the evidence commit follows
-                                 and is not self-covered -- a manifest cannot record its own SHA)
+Final commit:                    822af246925f  (the commit the manifest attests to; the
+                                 evidence commit carrying it follows and is not self-covered --
+                                 a manifest cannot record its own SHA. Checked mechanically by
+                                 scripts/check-evidence-claims.sh, not asserted.)
 Model/harness identifier:        claude-opus-5 (project alias; provider id and harness version
                                  read from ai-toolchain.lock, per alpha-spec 1.3)
 Environment:                     grid-alpha-opus5 (Linux 6.18.5; rustc 1.94.1; cargo 1.94.1)
@@ -135,7 +137,7 @@ Targeted tests:                  cargo nextest run --workspace  -> 3 tests run, 
                                  cargo test -p grid-ffi --features flutter-bridge-tests -> 0 tests, ok
                                  ./tests/guards/run.sh          -> 54 passed, 0 failed
 Canonical verification command:  just verify
-Verification exit status:        0, run against 26623a7906d8 -- the commit this record and the
+Verification exit status:        0, run against 822af246925f -- the commit this record and the
                                  manifest both name.
 Golden files changed:            N/A -- no golden files exist (P1-06)
 Performance evidence:            N/A -- no performance target is affected (no code to measure)

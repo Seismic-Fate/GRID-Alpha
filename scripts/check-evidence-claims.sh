@@ -96,9 +96,19 @@ else
     echo "check-evidence-claims: NOTE traceability count not checked ('$BASE' unresolvable here)"
 fi
 
+# 8. The body's "Final commit" must be the commit the manifest attests to. The body asserts
+# outright that it is ("the commit this record and the manifest both name"), and after a round
+# of evidence commits those two drifted apart while every NUMERIC claim above still matched --
+# which is exactly the boundary this script had. Numbers were never the only thing that goes
+# stale. Compared on the manifest's short form so the body can keep quoting 12 characters.
+manifest_commit="$(python3 -c 'import json;print(json.load(open("'"$MANIFEST"'"))["commit"])')"
+claim "the Final commit in $BODY vs the commit $MANIFEST attests to" \
+      "$(from_body 'Final commit: *\([0-9a-f]\{7,40\}\)')" \
+      "${manifest_commit:0:12}"
+
 # A checker that compared nothing would exit 0 and look identical to a clean record.
-if [[ "$checked" -lt 7 ]]; then
-    echo "check-evidence-claims: FAIL only $checked claim(s) compared; expected at least 7." >&2
+if [[ "$checked" -lt 8 ]]; then
+    echo "check-evidence-claims: FAIL only $checked claim(s) compared; expected at least 8." >&2
     echo "  A phrasing change in $BODY silently drops claims from this pass -- which is the exact" >&2
     echo "  way the traceability count escaped it for three rounds. Fix the extractor, not this bound." >&2
     exit 1
