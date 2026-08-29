@@ -1,13 +1,23 @@
 # CLAUDE.md — GRID-Alpha
 
 ## Authority Order
-1. Alpha specification (`alpha-spec.md`)
-2. Final build specification (`final-build-spec.md`)
-3. `docs/authority-index.md`
-4. `docs/adr/` (Architecture Decision Records)
-5. `docs/contracts/` (Provider schemas, FFI contracts)
-6. `docs/model-specs/` (Statistical equations)
-7. `docs/work-packages/` (Active implementation scope)
+
+Per `alpha-spec.md` §1.5. Corrected in P1-00: this list previously placed the alpha spec
+above the final build spec, inverting §1.5. See `docs/02-adr/001-repo-bootstrap-decisions.md`.
+
+1. Final build specification (`final-build-spec.md`)
+2. Alpha specification (`alpha-spec.md`)
+3. `docs/02-adr/` (Architecture Decision Records)
+4. `docs/03-contracts/` (provider schemas, FFI contracts), `docs/05-model-specs/` (statistical
+   equations), `docs/04-providers/` (provider manifests)
+5. `docs/01-work-packages/` (the approved work package)
+6. Tests and fixtures implementing approved contracts
+7. Existing source code, comments, and local conventions
+
+Existing code is not authoritative merely because it exists. Tests are not authoritative if
+they contradict a higher-level approved requirement.
+
+Full map and §8.7 path aliases: `docs/00-meta/authority-index.md`.
 
 ## Architecture Non-Negotiables
 - Native Flutter Windows UI only. No WebView, Electron, browser layer.
@@ -33,8 +43,18 @@ Ridge, RAPM (sparse CG), Kalman (online + RTS), Empirical-Bayes, Affine, Gradien
 - NCAA-to-NFL linking: conservative tiers, no auto-promote ambiguous matches.
 
 ## Verification & Evidence
+- One-time per environment: `just bootstrap` (dev tools + local SQLite dev database)
 - Linux smoke: `just verify` (or `./scripts/verify.sh`)
 - Windows authoritative: `.\scripts\verify.ps1 -Scope Full`
+- **Verification recipes are a frozen contract.** Make the repository satisfy them. Never edit
+  a recipe to make a failure disappear — if one cannot pass, stop and report.
+  `scripts/check-verify-parity.sh` keeps `justfile` and `scripts/verify.sh` in lockstep.
+- Requires `DATABASE_URL=sqlite:target/grid-dev.db` and `SQLX_OFFLINE=true`, both supplied by
+  the committed `.env`; see `docs/02-adr/002-sqlx-offline-cache.md`. Offline is the default so a
+  fresh clone compiles against the committed `.sqlx` cache with no database;
+  `cargo sqlx prepare` overrides it to regenerate. `scripts/check-env-contract.sh` checks that
+  `DATABASE_URL` is well-formed and that `SQLX_OFFLINE` agrees with whether `.sqlx/` exists — it
+  does not assert which value you should be using.
 - Every work package needs evidence manifest before claiming done.
 - No deleting tests to pass. No hand-editing generated FFI code.
 - No post-lock data in training features. No competitor data in model training.
@@ -63,6 +83,16 @@ Ridge, RAPM (sparse CG), Kalman (online + RTS), Empirical-Bayes, Affine, Gradien
 7. Run canonical suite (`just verify`).
 8. Generate evidence (`just evidence`).
 9. Prepare PR. Do not merge.
+
+## Module-Level CLAUDE.md Policy
+Per `alpha-spec.md` §8.7.1, instruction files are layered and each stays small:
+- Root `CLAUDE.md` — durable, non-obvious rules that apply to most work.
+- This file (`docs/CLAUDE.md`) — repository-wide architecture, boundaries, and protocol.
+- `crates/<crate>/CLAUDE.md` — optional, for local commands, patterns, and pitfalls only.
+
+Long domain tutorials, provider schemas, and model equations belong in `docs/03-contracts/`,
+`docs/04-providers/`, and `docs/05-model-specs/` — never inlined here. A module file may
+narrow a rule for its crate; it may never relax a rule set by a higher-authority document.
 
 ## Prohibited Shortcuts
 - Inventing provider fields, crates, or Flutter APIs from memory.
