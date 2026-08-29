@@ -1,7 +1,7 @@
 {
   "schema": "grid-alpha/evidence-manifest/1",
   "work_package_id": "P1-00",
-  "commit": "6b7f3fd081078401327e77565c746334e61dbf30",
+  "commit": "26623a7906d85e558b2267130c3046807521b531",
   "branch": "wp/P1-00-repo-bootstrap",
   "model": "claude-opus-5",
   "work_package": {
@@ -9,11 +9,11 @@
     "file": "docs/01-work-packages/p1-00-work-package.md"
   },
   "commit_info": {
-    "sha": "6b7f3fd081078401327e77565c746334e61dbf30",
+    "sha": "26623a7906d85e558b2267130c3046807521b531",
     "branch": "wp/P1-00-repo-bootstrap",
     "range": "origin/main...HEAD",
-    "generated_at": "2026-08-20T21:14:26Z",
-    "state": "uncommitted: 3 path(s) not yet in 6b7f3fd081078401327e77565c746334e61dbf30"
+    "generated_at": "2026-08-29T03:10:40Z",
+    "state": "uncommitted: 2 path(s) not yet in 26623a7906d85e558b2267130c3046807521b531"
   },
   "model_and_harness": {
     "project_alias": "claude-opus-5",
@@ -25,7 +25,7 @@
     "source": "ai-toolchain.lock"
   },
   "environment": {
-    "os": "Linux 6.18.5-fc-v20 x86_64",
+    "os": "Linux 6.18.44-fc-v22 x86_64",
     "rustc": "rustc 1.94.1 (e408947bf 2026-03-25)",
     "cargo": "cargo 1.94.1 (29ea6fb6a 2026-03-24)"
   },
@@ -86,6 +86,7 @@
     "docs/02-adr/007-verify-covers-guards-and-doctests.md",
     "docs/02-adr/008-verify-scope-guard.md",
     "docs/02-adr/009-verify-ps1-exit-codes.md",
+    "docs/02-adr/010-guard-the-shape-not-the-instance.md",
     "docs/02-adr/README.md",
     "docs/04-providers/cfbd/README.md",
     "docs/04-providers/nflverse/README.md",
@@ -101,6 +102,7 @@
     "scripts/bootstrap-repo.sh",
     "scripts/check-authority-sync.sh",
     "scripts/check-env-contract.sh",
+    "scripts/check-evidence-claims.sh",
     "scripts/check-migrations.sh",
     "scripts/check-secrets.sh",
     "scripts/check-traceability.sh",
@@ -123,7 +125,8 @@
       "docs/02-adr/006-deferred-deliverables.md",
       "docs/02-adr/007-verify-covers-guards-and-doctests.md",
       "docs/02-adr/008-verify-scope-guard.md",
-      "docs/02-adr/009-verify-ps1-exit-codes.md"
+      "docs/02-adr/009-verify-ps1-exit-codes.md",
+      "docs/02-adr/010-guard-the-shape-not-the-instance.md"
     ],
     "contracts": [],
     "model_specs": []
@@ -181,7 +184,7 @@
         "command": "./scripts/check-traceability.sh origin/main",
         "exit_status": 0,
         "run_against_commit": "6b7f3fd081078401327e77565c746334e61dbf30",
-        "summary": "All 65 non-trivial paths traced individually, without PR_BODY -- which is how the build jobs run it now that they check out at fetch-depth 0."
+        "summary": "All 68 non-trivial paths traced individually, without PR_BODY -- which is how the build jobs run it now that they check out at fetch-depth 0."
       },
       {
         "command": "./scripts/check-authority-sync.sh",
@@ -227,8 +230,8 @@
     "reviewer": "Round 1: PR #2, branch claude/grid-alpha-adversarial-review-ikkjuk, reviewed 7787921. Round 2: PR #3, branch claude/adversarial-review-p1-00-l32emp, posted as a comment on PR #1 at 2026-08-20T12:25:40Z, reviewed de3b36c.",
     "findings": [],
     "resolved": [],
-    "reviewed_commit": "de3b36cf98a36ad59052f292ea2b0791ce90408b",
-    "verdict": "Round 1: CONDITIONAL -- 6 blockers, 10 major, 9 minor (all triaged). Round 2: CONDITIONAL -- 3 blockers, 9 major, 11 minor.",
+    "reviewed_commit": "round 2: de3b36c; round 3: 8e07b04",
+    "verdict": "round 2: CONDITIONAL (3 blockers, 9 major, 11 minor); round 3: CONDITIONAL (1 blocker, 3 major, 4 minor)",
     "round_2_disposition": [
       {
         "id": "C1",
@@ -339,6 +342,48 @@
         "id": "D11 discharged",
         "summary": "the Windows evidence withdrawn after ADR-009 is re-earned",
         "disposition": "Run 32415391750 carries the ADR-009 self-test and the authoritative verification green in one job on one commit. verification_status returns to 'passed' -- earned across four rounds rather than asserted. The withdrawal stood for 8 commits and 5 CI runs; that is the cost of the standard and it was worth paying."
+      }
+    ],
+    "round_3_disposition": [
+      {
+        "id": "C1",
+        "summary": "check-secrets.sh fails open in diff mode over untracked files: scan_files is called and nothing checks `scanned`",
+        "disposition": "FIXED, and the finding UNDERSTATED it. Reproduced both arms: diff mode exits 0 with a ghp_ token in an untracked file, and full-tree mode does too, because the round-2 call-site guard runs several lines BEFORE the untracked scan and counts only the tracked pass. Fixing the diff arm alone would have been the third patch to an instance, so the guard moved INSIDE scan_files and the redundant call-site guard was removed. Accounts for deliberate skips (the detector's own files, binaries) so an all-binary untracked set still passes -- proved by a case. Mutation control: with the new guard disabled, three suite cases go red."
+      },
+      {
+        "id": "M1",
+        "summary": "the Assert-Ok coverage analysis misses six of seven command forms, including `& $tool`, `.\\tool.exe` and column 0",
+        "disposition": "FIXED. Reproduced the reviewer's table exactly (1 caught, 6 missed) -- after discarding my own first attempt, which inserted the command where it displaced cargo fmt's Assert-Ok and so read all-CAUGHT for the wrong reason. Rule inverted: a line is a command UNLESS it is a recognised construct. Keyword boundary is ([^[:alnum:]_-]|$), not \\b, because in awk \\b is a backspace (gawk spells it \\y; this runner is mawk 1.3.4) -- writing \\b silently produced three false positives. Controls added for all seven forms and for twelve constructs; with the old analysis restored, six form cases go red."
+      },
+      {
+        "id": "M2",
+        "summary": "verify.ps1's command list is parity-checked against nothing, while being the merge-authoritative gate",
+        "disposition": "FIXED. Verified 'latent, not drifted' independently before acting: 16 commands, same order, all three. check-verify-parity.sh now reads all three, comparing pairwise so the failure names which one drifted. The `bash ` prefix verify.ps1 needs on Windows is normalised at line start only, with a case proving that does not make the ps1 side always compare equal. Proved by dropping cargo audit from verify.ps1 alone: parity fails, Assert-Ok coverage stays clean at 15/0 -- which is exactly why nothing else could have caught it. No D5 amendment: the parity guard is not one of the three frozen implementations."
+      },
+      {
+        "id": "M3",
+        "summary": "the ADR-009 self-test accepts any non-zero exit as proof, and exercises Assert-Ok #1 of 16",
+        "disposition": "FIXED, both parts. Each run now asserts on the SPECIFIC Assert-Ok message, so a renamed script, a pwsh startup error or a missing bash can no longer read as 'correctly refused to pass'. A second run stubs cargo and bash to SUCCEED and typos to fail: it exercises the LAST Assert-Ok and proves the other fifteen fall through cleanly on success, covering both directions. Cannot be executed here -- there is no PowerShell on this runner -- so it is proven by CI on windows-latest, not locally. What was checked locally: the two expected substrings match the real Assert-Ok labels and the throw format string."
+      },
+      {
+        "id": "minor-1",
+        "summary": "the manifest records 'All 65 non-trivial paths traced'; the true count is 66 -- and it sat outside the claim-verification pass",
+        "disposition": "FIXED, and the mechanism more than the number. The pass was a routine run from memory over nine facts, which is why a tenth escaped it for three rounds. It is now scripts/check-evidence-claims.sh, which re-derives seven claim families from the artifacts and refuses to pass if it compared fewer than seven. Run in CI's guards job. Deliberately NOT in `just verify`: the manifest records verify's own output, so requiring a current manifest before verify can pass would never converge."
+      },
+      {
+        "id": "minor-2",
+        "summary": "windows-authoritative has no offline-compile step though linux-smoke does",
+        "disposition": "FIXED. Added before Bootstrap on the merge gate. pwsh has no `env -u`, so DATABASE_URL is removed from the process environment and restored after, with an assertion that it is actually gone -- removing it is the whole point, since it reproduces a fresh clone resolving query! against the committed .sqlx cache."
+      },
+      {
+        "id": "minor-3",
+        "summary": "verify.sh's scope guard must stay at column 0 or check-verify-parity breaks; documented only in a comment",
+        "disposition": "FIXED. Now an assertion in the guard suite, with a control proving an indented arm is actually detected. A comment is a note to a careful reader; this survives a routine re-indent."
+      },
+      {
+        "id": "minor-4",
+        "summary": "the manifest has never covered the head in three rounds -- is the framing hiding a fixable ordering problem?",
+        "disposition": "ANSWERED, NOT FIXED, deliberately. See the reply on PR #1. Generating the manifest in CI against the pushed head would make CI the author of its own evidence, and the lag is one commit by construction, not a workflow defect. What WAS fixable is that the lag went unmeasured: check-evidence-claims.sh now verifies the content claims independently of which commit they were written at, and explicitly does not assert manifest.commit == HEAD, because that would encode a falsehood as a rule."
       }
     ]
   },
