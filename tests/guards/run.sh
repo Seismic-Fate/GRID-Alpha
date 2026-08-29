@@ -127,6 +127,53 @@ grep -q 'ZZZNOMATCHZZZ' "$d/scripts/check-secrets.sh" \
     || bad "empty-diff fixture did not apply" "sed did not patch the copied scanner"
 expect 1 "changed files with zero added lines collected fails closed" "$d" ./scripts/check-secrets.sh base
 
+# ---------------------------------------------------------------------------------------------
+# Round 3 C1. The untracked scan is the THIRD instance of the empty-scan shape, and it was
+# unguarded in BOTH arms: diff mode never checked it, and in full-tree mode the old call-site
+# guard ran several lines earlier, counting only the tracked pass.
+#
+# These cases are written against the FUNCTION, not against either arm, because the fix is that
+# scan_files guards itself. Both arms are exercised so neither can regress alone, and both carry
+# a control -- a token planted in an UNTRACKED file, which the intact scanner must catch. That
+# control is what proves the case can fail: without it, a scanner that opened nothing would
+# "pass" the fixture for the wrong reason.
+plant_untracked_token() {
+    # A deny-tier ghp_ token, assembled at runtime so this file never contains a literal one.
+    printf 'token = "ghp_%s"\n' "$(printf 'A%.0s' $(seq 36))" > "$1/untracked_secret.rs"
+}
+break_scan_files() {
+    sed -i 's|^        f="\${f%\$.\\r.}"|        f="${f}\\r"|' "$1/scripts/check-secrets.sh"
+    grep -q 'f="${f}\\r"' "$1/scripts/check-secrets.sh" \
+        || bad "untracked-scan fixture did not apply" "sed did not patch the copied scanner"
+}
+
+d="$(new_repo secrets-untracked-diff)"
+git -C "$d" branch -q base HEAD
+echo "// a real change" > "$d/changed.rs"
+git -C "$d" add -A; git -C "$d" commit -qm "P1-00 change a file"
+plant_untracked_token "$d"
+expect 1 "control: diff mode catches a token in an UNTRACKED file" "$d" ./scripts/check-secrets.sh base
+break_scan_files "$d"
+expect 1 "diff mode: untracked paths listed but none opened fails closed" "$d" ./scripts/check-secrets.sh base
+
+d="$(new_repo secrets-untracked-full)"
+plant_untracked_token "$d"
+expect 1 "control: full-tree mode catches a token in an UNTRACKED file" "$d" ./scripts/check-secrets.sh no-such-base
+# Break resolution for the untracked paths ONLY, leaving the tracked pass healthy. That is the
+# case the old call-site guard could not see: it had already run and counted a non-zero scan.
+sed -i 's|^.*# UNRESOLVABLE.*$|        case "$f" in untracked_*) continue ;; esac|' \
+    "$d/scripts/check-secrets.sh"
+grep -q 'untracked_\*' "$d/scripts/check-secrets.sh" \
+    || bad "untracked-only fixture did not apply" "sed did not patch the copied scanner"
+expect 1 "full-tree mode: untracked scan broken alone fails closed" "$d" ./scripts/check-secrets.sh no-such-base
+
+# The guard must not fire on a legitimately unopenable set. An all-binary untracked corpus opens
+# zero files for a deliberate reason, and reporting OK there is correct -- so this case proves
+# the guard discriminates rather than simply refusing whenever it opened nothing.
+d="$(new_repo secrets-untracked-binary)"
+printf '\x00\x01\x02\x03binary\x00' > "$d/blob.bin"
+expect 0 "an all-binary untracked set is a deliberate skip, not a broken scan" "$d" ./scripts/check-secrets.sh no-such-base
+
 # minor 3: the deny patterns require realistic token lengths, so a truncated or short test
 # token sits in the gap. The warn tier reports it without failing the build.
 d="$(new_repo secrets-warn)"
@@ -198,26 +245,57 @@ expect_env 1 "traceability: no base ref under CI fails"   "$d" CI=true -u PR_BOD
 # check-verify-parity is the only thing stopping the justfile and verify.sh from drifting --
 # ADR-001 D5 forbids unifying them -- and it had no tests at all (finding M8).
 echo "check-verify-parity"
+# Round 3 M2: the guard now reads THREE implementations, so the fixture writes three. Without a
+# verify.ps1 here the drift case would still exit 1 -- on "missing scripts/verify.ps1" -- and
+# would have passed for the wrong reason.
 mk_parity() {
-    local d="$1" extra="${2:-}"
+    local d="$1" sh_extra="${2:-}" ps1_extra="${3:-}"
     printf 'verify:\n    just check-a\n    just check-b\n\ncheck-a:\n    cargo fmt --all -- --check\n\ncheck-b:\n    typos\n' > "$d/justfile"
     { printf '#!/bin/bash\nset -euo pipefail\nSCOPE="${1:-full}"\nif [[ "$SCOPE" == "full" ]]; then\n'
       printf '    cargo fmt --all -- --check\n    typos\n'
-      [[ -n "$extra" ]] && printf '    %s\n' "$extra"
+      [[ -n "$sh_extra" ]] && printf '    %s\n' "$sh_extra"
       printf 'fi\n'; } > "$d/scripts/verify.sh"
+    { printf '$ErrorActionPreference = "Stop"\n'
+      printf 'function Assert-Ok([string]$Step) {\n    if ($LASTEXITCODE -ne 0) {\n        throw "x"\n    }\n}\n'
+      printf 'if ($true) {\n'
+      printf '    cargo fmt --all -- --check\n    Assert-Ok "fmt"\n    typos\n    Assert-Ok "typos"\n'
+      [[ -n "$ps1_extra" ]] && printf '    %s\n    Assert-Ok "extra"\n' "$ps1_extra"
+      printf '}\n'; } > "$d/scripts/verify.ps1"
     git -C "$d" add -A; git -C "$d" commit -qm "P1-00 parity fixture"
 }
 d="$(new_repo parity-agree)";  mk_parity "$d"
-expect 0 "matching implementations agree" "$d" ./scripts/check-verify-parity.sh
+expect 0 "all three implementations agree" "$d" ./scripts/check-verify-parity.sh
 
 d="$(new_repo parity-drift)";  mk_parity "$d" "cargo audit"
 expect 1 "a step added to verify.sh only is caught" "$d" ./scripts/check-verify-parity.sh
 
-# Two silently-empty extractions compare EQUAL. A broken parser must fail, not report
+# The M2 scenario itself: the step is present in the justfile and verify.sh and MISSING from
+# verify.ps1 -- the merge-authoritative gate silently running one check fewer than the smoke
+# gate. Nothing in the repository caught this before the guard went three-way.
+d="$(new_repo parity-drift-ps1)"
+mk_parity "$d"
+printf 'check-c:\n    cargo audit\n' >> "$d/justfile"
+sed -i 's|^    just check-b$|    just check-b\n    just check-c|' "$d/justfile"
+sed -i 's|^    typos$|    typos\n    cargo audit|' "$d/scripts/verify.sh"
+git -C "$d" add -A; git -C "$d" commit -qm "P1-00 step missing from verify.ps1"
+expect 1 "a step missing from verify.ps1 only is caught (M2)" "$d" ./scripts/check-verify-parity.sh
+
+# The `bash ` prefix verify.ps1 needs to run a .sh on Windows is a platform necessity, not
+# drift, and must NOT be reported as disagreement. Proves the normalisation discriminates
+# rather than simply making the ps1 side always compare equal.
+d="$(new_repo parity-bash-prefix)"
+printf 'verify:\n    just check-a\n\ncheck-a:\n    ./scripts/check-env-contract.sh\n' > "$d/justfile"
+printf '#!/bin/bash\nset -euo pipefail\nif true; then\n    ./scripts/check-env-contract.sh\nfi\n' > "$d/scripts/verify.sh"
+printf 'if ($true) {\n    bash ./scripts/check-env-contract.sh\n    Assert-Ok "env"\n}\n' > "$d/scripts/verify.ps1"
+git -C "$d" add -A; git -C "$d" commit -qm "P1-00 bash-prefix fixture"
+expect 0 "the bash prefix on verify.ps1 guard steps is not reported as drift" "$d" ./scripts/check-verify-parity.sh
+
+# Silently-empty extractions compare EQUAL. A broken parser must fail, not report
 # agreement on zero steps -- the fail-open shape this whole suite exists for.
 d="$(new_repo parity-empty)"
 printf 'verify:\n    just check-a\n\ncheck-a:\n' > "$d/justfile"
 printf '#!/bin/bash\necho hi\n' > "$d/scripts/verify.sh"
+printf 'if ($true) {\n    cargo fmt --all -- --check\n    Assert-Ok "fmt"\n}\n' > "$d/scripts/verify.ps1"
 git -C "$d" add -A; git -C "$d" commit -qm "P1-00 empty recipes"
 expect 1 "an extraction yielding zero commands fails rather than passing" "$d" ./scripts/check-verify-parity.sh
 
@@ -252,16 +330,36 @@ expect_env 99 "no argument defaults to full" "$d" "PATH=$d/stub:$PATH" -- ./scri
 
 # ADR-009 fixed verify.ps1 to check $LASTEXITCODE after every native command. Nothing stops a
 # later command being added WITHOUT one, which would silently reopen the merge-gate fail-open --
-# and no other guard can see it: check-verify-parity reads the justfile and verify.sh, never the
-# PowerShell implementation. This is a text analysis, so it runs on Linux where pwsh does not.
+# and the Assert-Ok convention is something no other guard can see: check-verify-parity compares
+# WHICH commands each implementation runs (three-way since round 3 M2), never whether each one's
+# exit code is checked. This is a text analysis, so it runs on Linux where pwsh does not.
 echo "verify.ps1 exit-code coverage (ADR-009 regression)"
+# Round 3 M1. The first version of this analysis asked "does the line LOOK like a command?"
+# via /^[[:space:]]+[A-Za-z]/ and missed six of seven forms: `& $tool` and `.\tool.exe` (the two
+# idiomatic PowerShell invocations, and `.\` is how the workflow calls this very script), and
+# anything at column 0 -- none of which start with an indented letter. Worse, the construct-skip
+# list was unanchored, so `ifconfig`, `paramgen` and `throwaway-tool` were skipped as if they
+# were `if`, `param` and `throw`.
+#
+# Inverted: a line is a command UNLESS it is a recognised construct. A new invocation form is
+# then caught by default, instead of needing the pattern widened to admit it first.
+#
+# The keyword boundary is ([^[:alnum:]_-]|$), NOT \b -- in awk \b is a backspace, not a word
+# boundary (gawk spells it \y; mawk, which Ubuntu runners use, has neither). Writing \b here
+# silently matched nothing and turned `param(` and `if (...)` into false positives. Measured,
+# not assumed: this runner is mawk 1.3.4.
 ps1_unguarded() {
     awk '
-      /^[[:space:]]*#/                                       { next }
-      /^[[:space:]]*(if|throw|else|\}|function|param|\[|\$)/ { next }
-      /Assert-Ok/                                            { next }
-      /Write-Host/                                           { next }
-      /^[[:space:]]+[A-Za-z]/ {
+      { sub(/\r$/, "") }
+      /^[[:space:]]*(#|$)/ { next }
+      /^[[:space:]]*(if|elseif|else|switch|foreach|for|while|do|try|catch|finally|function|param|return|throw|break|continue|begin|process|end)([^[:alnum:]_-]|$)/ { next }
+      /^[[:space:]]*[{}]/ { next }
+      /^[[:space:]]*\[/   { next }
+      /^[[:space:]]*\)/   { next }
+      /^[[:space:]]*\$/   { next }
+      /Write-Host/ { next }
+      /Assert-Ok/  { next }
+      {
           cmd = $0
           if ((getline nxt) <= 0 || nxt !~ /Assert-Ok/) { print "UNGUARDED:" cmd; bad++ } else { n++ }
           next
@@ -286,6 +384,101 @@ if ps1_unguarded "$ps1_mutated" >/dev/null 2>&1; then
 else
     ok "removing one Assert-Ok is caught (mutation control)"
 fi
+
+# Round 3 M1. The control above proves the analysis can FAIL. It does not prove it can SEE:
+# the old analysis passed it while missing six of the seven ways a native command can be
+# written. Each form below is inserted AFTER a complete command/Assert-Ok pair, so the insert
+# stands alone and cannot be "caught" by displacing an existing pairing -- a trap that made an
+# early version of this table read all-green for the wrong reason.
+ps1_form_missed=0
+while IFS='|' read -r label line; do
+    [[ -z "$label" ]] && continue
+    m="$TMP/verify.ps1.form"
+    awk -v ins="$line" '
+        { print }
+        /Assert-Ok "cargo fmt --all -- --check"/ && !done { print ins; done = 1 }
+    ' "$ps1_plain" > "$m"
+    if out="$(ps1_unguarded "$m" 2>&1)"; then
+        bad "unguarded command as $label is not detected" "$out"
+        ps1_form_missed=1
+    elif printf '%s' "$out" | grep -q 'UNGUARDED.*cargo fmt'; then
+        bad "the $label case flags cargo fmt, not the insert" "$out"
+        ps1_form_missed=1
+    fi
+done <<'FORMS'
+a plain indented command|    sbom-tool generate
+a call-operator invocation|    & $sbom generate
+a relative-path invocation|    .\tools\sbom.exe
+a command whose name starts "if"|    ifconfig
+a command whose name starts "param"|    paramgen --check
+a command whose name starts "throw"|    throwaway-tool
+a command at column 0|sbom-tool generate
+FORMS
+[[ "$ps1_form_missed" -eq 0 ]] \
+    && ok "an unguarded command is detected in all 7 invocation forms (M1 coverage control)"
+
+# And the inverse: a recognised construct must never be mistaken for a command. Without this,
+# "detects everything" is trivially satisfiable by flagging every line.
+ps1_fp=0
+while IFS= read -r construct; do
+    [[ -z "$construct" ]] && continue
+    m="$TMP/verify.ps1.fp"
+    { printf '%s\n' "$construct"; printf '    cargo x\n    Assert-Ok "cargo x"\n'; } > "$m"
+    if ps1_unguarded "$m" 2>&1 | grep -q 'UNGUARDED'; then
+        bad "construct misread as a native command: $construct" "$(ps1_unguarded "$m" 2>&1)"
+        ps1_fp=1
+    fi
+done <<'CONSTRUCTS'
+if ($x) {
+elseif ($y) {
+else {
+try {
+catch {
+function F {
+param(
+throw "x"
+$v = 1
+    [string]$s
+)
+}
+CONSTRUCTS
+[[ "$ps1_fp" -eq 0 ]] && ok "PowerShell constructs are not misread as commands (no false positives)"
+
+# Round 3 M3. The CI self-test asserts on the SPECIFIC Assert-Ok message, so it is coupled to
+# the first and last labels in verify.ps1: it stubs cargo to fail and expects
+# "[verify] FAILED: cargo fmt", then stubs typos to fail and expects "[verify] FAILED: typos".
+# Renaming either label silently turns that assertion into one that can only fail. Checked here,
+# on Linux, in milliseconds, rather than 25 minutes into the Windows job.
+ps1_labels="$(sed 's/\r$//' "$ROOT/scripts/verify.ps1" | sed -n 's/.*Assert-Ok "\([^"]*\)".*/\1/p')"
+ps1_first="$(printf '%s\n' "$ps1_labels" | head -1)"
+ps1_last="$(printf '%s\n' "$ps1_labels" | tail -1)"
+if [[ "$ps1_first" == cargo\ fmt* && "$ps1_last" == "typos" ]]; then
+    ok "the CI self-test's expected Assert-Ok labels still exist ('$ps1_first' … '$ps1_last')"
+else
+    bad "verify.ps1's first/last Assert-Ok labels moved; the ADR-009 self-test can no longer pass" \
+        "first='$ps1_first' last='$ps1_last' -- update .github/workflows/alpha-ci.yml together with this"
+fi
+
+# Round 3 min-3. ADR-008's scope guard MUST stay at column 0. check-verify-parity extracts
+# verify.sh's command list with `grep -E '^[[:space:]]+[a-zA-Z._/]'`, so an indented `case` arm
+# would be read as a verification step and reported as drift against the justfile. That coupling
+# was documented in a comment, which means a routine re-indent in one file silently changes
+# another file's verdict. A comment is a note to a careful reader; this is the assertion.
+echo "verify.sh scope guard indentation (ADR-008 / parity coupling)"
+scope_indented="$(sed 's/\r$//' "$ROOT/scripts/verify.sh" \
+    | awk '/^[[:space:]]*case[[:space:]]+"\$SCOPE"/, /^[[:space:]]*esac/' \
+    | grep -cE '^[[:space:]]+' || true)"
+if [[ "$scope_indented" -eq 0 ]]; then
+    ok "the scope-guard case block is at column 0, where the parity extractor cannot see it"
+else
+    bad "the scope-guard case block in verify.sh is indented ($scope_indented line(s))" \
+        "check-verify-parity would read those arms as verification steps and report false drift"
+fi
+# And the control: an indented arm must actually be detectable, or the check above is vacuous.
+scope_ctl="$(printf 'case "$SCOPE" in\n    full) ;;\nesac\n' | awk '/^[[:space:]]*case[[:space:]]+"\$SCOPE"/, /^[[:space:]]*esac/' | grep -cE '^[[:space:]]+' || true)"
+[[ "$scope_ctl" -gt 0 ]] \
+    && ok "an indented case arm is detected (control)" \
+    || bad "the indentation check cannot fail" "an indented arm was not counted"
 
 echo
 printf '%s passed, %s failed\n' "$pass" "$fail"

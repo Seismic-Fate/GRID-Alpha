@@ -1,13 +1,23 @@
 #!/usr/bin/env bash
-# The justfile and scripts/verify.sh must run the SAME verification steps.
+# The justfile, scripts/verify.sh and scripts/verify.ps1 must run the SAME verification steps.
 #
 # alpha-spec.md 8.11 defines one canonical verification interface, but the repository ships
-# two independent implementations: the `verify` recipe chain in the justfile, and the inline
-# command list in scripts/verify.sh. Both are a frozen contract (ADR-001 D5), so they cannot
-# be unified by making one call the other. This guard asserts they stay in lockstep instead.
+# THREE independent implementations: the `verify` recipe chain in the justfile, the inline
+# command list in scripts/verify.sh, and the same list again in scripts/verify.ps1. All three
+# are a frozen contract (ADR-001 D5), so they cannot be unified by making one call another.
+# This guard asserts they stay in lockstep instead.
 #
-# If this fails, the two have drifted. Fix by bringing them back into agreement — deliberately,
-# and with the owner's approval, because both files are frozen.
+# verify.ps1 was added to the comparison by the third adversarial review (M2). Until then this
+# script read two of the three, so a step added to the justfile and verify.sh and forgotten in
+# verify.ps1 passed every guard in the repository — and verify.ps1 is the MERGE-AUTHORITATIVE
+# gate (§8.11), which would then have run one check fewer than the smoke gate, silently.
+# Not drifted when found; latent. A guard that covers two of three is how it stops being latent.
+#
+# This script is a guard, not one of the three frozen implementations, so extending it needs no
+# D5 amendment.
+#
+# If this fails, the implementations have drifted. Fix by bringing them back into agreement —
+# deliberately, and with the owner's approval, because all three files are frozen.
 set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"
@@ -15,7 +25,8 @@ cd "$ROOT"
 
 JUSTFILE="justfile"
 VERIFY_SH="scripts/verify.sh"
-for f in "$JUSTFILE" "$VERIFY_SH"; do
+VERIFY_PS1="scripts/verify.ps1"
+for f in "$JUSTFILE" "$VERIFY_SH" "$VERIFY_PS1"; do
     [[ -f "$f" ]] || { echo "check-verify-parity: FAIL missing $f" >&2; exit 1; }
 done
 
@@ -55,11 +66,35 @@ sh_cmds="$(grep -vE '^[[:space:]]*(#|$)' "$VERIFY_SH" \
            | grep -vE '^#!' \
            | grep -E '^[[:space:]]+[a-zA-Z._/]' | norm || true)"
 
-# Two silently-empty extractions compare equal, so a broken parser would report agreement on
+# verify.ps1's command list. Extracted by the same inverted rule tests/guards/run.sh uses for
+# Assert-Ok coverage: a line is a command UNLESS it is a recognised PowerShell construct. A
+# "looks like a command" pattern misses `& $tool`, `.\tool.exe` and column 0 (round 3, M1), and
+# a parity check that cannot see a step is a parity check that will not notice it going missing.
+ps1_cmds="$(awk '
+    { sub(/\r$/, "") }
+    /^[[:space:]]*(#|$)/ { next }
+    /^[[:space:]]*(if|elseif|else|switch|foreach|for|while|do|try|catch|finally|function|param|return|throw|break|continue|begin|process|end)([^[:alnum:]_-]|$)/ { next }
+    /^[[:space:]]*[{}]/ { next }
+    /^[[:space:]]*\[/   { next }
+    /^[[:space:]]*\)/   { next }
+    /^[[:space:]]*\$/   { next }
+    /Write-Host/ { next }
+    /Assert-Ok/  { next }
+    { print }
+' "$VERIFY_PS1" | norm || true)"
+
+# Windows cannot execute a .sh directly, so verify.ps1 spells the seven guard steps
+# `bash ./scripts/x.sh` where verify.sh spells them `./scripts/x.sh`. That prefix is a platform
+# necessity, not a difference in WHAT is run, so it is normalised away before comparing.
+# Normalised on one side only, and only at the start of a line: `bash` appearing anywhere else
+# would be a genuine difference and must still show up as drift.
+ps1_cmds="$(printf '%s\n' "$ps1_cmds" | sed -e 's|^bash ||')"
+
+# Silently-empty extractions compare equal, so a broken parser would report agreement on
 # zero steps -- the same fail-open shape as the check-secrets defect this suite exists for.
-# This guard is load-bearing: D5 forbids unifying the two implementations, so this script is
+# This guard is load-bearing: D5 forbids unifying the implementations, so this script is
 # the only thing keeping them in step. Second adversarial review, finding M8.
-for side in just:"$just_cmds" sh:"$sh_cmds"; do
+for side in just:"$just_cmds" sh:"$sh_cmds" ps1:"$ps1_cmds"; do
     if [[ -z "${side#*:}" ]]; then
         echo "check-verify-parity: FAIL extracted ZERO commands from the ${side%%:*} side." >&2
         echo "  The parser is broken, or a verification implementation is empty. Either way this" >&2
@@ -68,14 +103,26 @@ for side in just:"$just_cmds" sh:"$sh_cmds"; do
     fi
 done
 
-if diff_out="$(diff <(printf '%s\n' "$just_cmds") <(printf '%s\n' "$sh_cmds"))"; then
-    n=$(printf '%s\n' "$just_cmds" | grep -c . || true)
-    echo "check-verify-parity: OK justfile and $VERIFY_SH agree on $n verification step(s)"
-    exit 0
+# Compared pairwise against the justfile so the failure message can name WHICH implementation
+# drifted. A single three-way equality would report "they disagree" without saying where.
+status=0
+for pair in "$VERIFY_SH":"$sh_cmds" "$VERIFY_PS1":"$ps1_cmds"; do
+    other_name="${pair%%:*}"
+    other_cmds="${pair#*:}"
+    if ! diff_out="$(diff <(printf '%s\n' "$just_cmds") <(printf '%s\n' "$other_cmds"))"; then
+        echo "check-verify-parity: FAIL justfile and $other_name have drifted" >&2
+        echo "  '<' only in justfile      '>' only in $other_name" >&2
+        printf '%s\n' "$diff_out" | sed 's/^/    /' >&2
+        status=1
+    fi
+done
+
+if [[ "$status" -ne 0 ]]; then
+    echo "  All three implementations are a frozen contract (ADR-001 D5): reconcile deliberately," >&2
+    echo "  with owner approval. Do not 'fix' this by editing whichever file the diff blames." >&2
+    exit 1
 fi
 
-echo "check-verify-parity: FAIL the two verification implementations have drifted" >&2
-echo "  '<' only in justfile      '>' only in $VERIFY_SH" >&2
-printf '%s\n' "$diff_out" | sed 's/^/    /' >&2
-echo "  Both files are a frozen contract (ADR-001 D5): reconcile deliberately, with owner approval." >&2
-exit 1
+n=$(printf '%s\n' "$just_cmds" | grep -c . || true)
+echo "check-verify-parity: OK justfile, $VERIFY_SH and $VERIFY_PS1 agree on $n verification step(s)"
+exit 0

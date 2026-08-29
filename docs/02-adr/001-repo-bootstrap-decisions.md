@@ -109,6 +109,12 @@ nothing, and a merge gate that discarded every exit code. D5 froze the list of c
 the code deciding whether a check counts unexamined, and both fail-opens survived multiple green
 CI runs and two adversarial reviews. Freezing a check list is not the same as trusting it.
 
+**Still four amendments after round 3.** The third adversarial review returned a blocker and
+three majors, and none of them needed a fifth: every fix landed in a guard script, the guard
+suite, or CI — none of which D5 freezes. That is the distinction the pattern above predicts.
+D5 protects *what is checked*; the recurring defects have all been in *whether the checking
+code can see*. ADR-010 records the placement rule that came out of round 3.
+
 Two consequences accepted deliberately:
 
 - `just verify` does **not** delegate to `scripts/verify.sh`, so the two implementations remain

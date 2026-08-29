@@ -26,3 +26,4 @@ Start from `docs/99-templates/template-adr.md`.
 | [007](007-verify-covers-guards-and-doctests.md) | verify covers guards and doctests | Accepted | 2026-08-20 |
 | [008](008-verify-scope-guard.md) | Validate the scope argument in verify.sh | Accepted | 2026-08-20 |
 | [009](009-verify-ps1-exit-codes.md) | verify.ps1 must propagate native exit codes | Accepted | 2026-08-20 |
+| [010](010-guard-the-shape-not-the-instance.md) | Fix the shape, not the instance: where a fail-closed guard belongs | Accepted | 2026-08-29 |
