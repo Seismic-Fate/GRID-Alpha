@@ -256,7 +256,7 @@ gate, and a record that had drifted from the code.
 | **M2** | Six checkably-false statements; the canonical run predated HEAD by three commits | Fixed. Every number in this body re-derived from a command run against the attested head |
 | **M5** | The offline-compile property — the entire reason `.sqlx` is committed — was **never exercised by CI** | Fixed. Offline `cargo check` gate added, proven to pass on a forced macro re-expansion and to fail with `.sqlx` absent |
 | **M4** | Tooling unpinned in a repo whose thesis is pinned reproducibility; `deny.toml`'s own claim depended on it | Fixed. `toolchains/dev-tools.lock`; both jobs echo resolved versions. Verified `cargo-deny 0.20.2` honours the explicit keys with no warning |
-| **M8** | Parity and env-contract had no tests — and parity is load-bearing because D5 forbids unifying the two implementations | Fixed, and the worry was **understated**: two empty extractions compared equal, and the script did not even fail cleanly. Suite 12 → **54** cases |
+| **M8** | Parity and env-contract had no tests — and parity is load-bearing because D5 forbids unifying the two implementations | Fixed, and the worry was **understated**: two empty extractions compared equal, and the script did not even fail cleanly. Suite 12 → **42** cases in round 2, **54** after round 3 |
 | **M9** | The permission profile had drifted from the justfile it enumerates | Fixed. Prefix forms that cannot fall behind |
 | **M3** | The §8.12-mandated `human_approvals.required` said no approvals are required | Fixed. Both mandated fields populated |
 
@@ -370,7 +370,7 @@ argument — a gate that passes vacuously is a gate nobody has tested — applie
 | | Proves |
 |---|---|
 | **ADR-009 self-test** step on `windows-authoritative` | Runs the real `verify.ps1` with a stub `cargo` that exits 7 and requires a non-zero exit. Fails loudly if the fix is ever inert |
-| **`verify.ps1` exit-code coverage** case in the guard suite | Every native command is immediately followed by an `Assert-Ok` (16/16), with a mutation control proving the check can fail. Nothing else could catch this — `check-verify-parity` never reads `verify.ps1` |
+| **`verify.ps1` exit-code coverage** case in the guard suite | Every native command is immediately followed by an `Assert-Ok` (16/16), with a mutation control proving the check can fail. Nothing else could catch this: parity compares WHICH commands each implementation runs — three-way since round 3 — never whether their exit codes are handled |
 
 The scanner's diff-mode branch also got the empty-scan guard its full-tree branch had, and both
 verdicts now state what they measured: `6561 added line(s) from 80 changed file(s)` rather than a
