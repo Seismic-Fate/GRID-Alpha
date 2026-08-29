@@ -1,7 +1,7 @@
 {
   "schema": "grid-alpha/evidence-manifest/1",
   "work_package_id": "P1-00",
-  "commit": "26623a7906d85e558b2267130c3046807521b531",
+  "commit": "822af246925f414a76a85d6e9c481e91b6a4d92f",
   "branch": "wp/P1-00-repo-bootstrap",
   "model": "claude-opus-5",
   "work_package": {
@@ -9,11 +9,11 @@
     "file": "docs/01-work-packages/p1-00-work-package.md"
   },
   "commit_info": {
-    "sha": "26623a7906d85e558b2267130c3046807521b531",
+    "sha": "822af246925f414a76a85d6e9c481e91b6a4d92f",
     "branch": "wp/P1-00-repo-bootstrap",
     "range": "origin/main...HEAD",
-    "generated_at": "2026-08-29T03:10:40Z",
-    "state": "uncommitted: 2 path(s) not yet in 26623a7906d85e558b2267130c3046807521b531"
+    "generated_at": "2026-08-29T03:15:31Z",
+    "state": "uncommitted: 3 path(s) not yet in 822af246925f414a76a85d6e9c481e91b6a4d92f"
   },
   "model_and_harness": {
     "project_alias": "claude-opus-5",
@@ -421,13 +421,13 @@
     "scripts/verify.ps1 -Scope Full is ESTABLISHED as passing under a gate proven capable of failing -- run 32415391750, both the ADR-009 self-test and the authoritative verification green in the same job on 6b7f3fd. Withheld through three earlier greens because the two halves sat in different runs of different commits; combining them would have repeated M2. CI remains authoritative on the true final commit (12.8), which is the commit carrying this manifest.",
     "Three fail-opens have now been found by the implementer after round 2, all invisible to CI's own conclusion: the Windows gate discarded exit codes, the secret scanner examined zero files on Windows, and the fix for the first was itself unproven. All three are fixed and regression-tested.",
     "Two fail-opens were found by the implementer in this round, both invisible to CI's own conclusion and to two adversarial reviews: the Windows gate discarded exit codes, and the secret scanner examined zero files on Windows. Both are fixed and regression-tested. The general lesson is recorded in ADR-001 D5: freezing a check list is not the same as trusting it.",
-    "scripts/check-verify-parity.sh does not read scripts/verify.ps1, so nothing cross-checks the PowerShell implementation against the other two. That is why ADR-009's defect was invisible to the parity guard. Extending it is a P1-11 follow-up.",
+    "RESOLVED in round 3 (M2). scripts/check-verify-parity.sh now reads all THREE frozen implementations, comparing pairwise so a failure names which one drifted. It was not drifted when found -- 16 commands, same order, all three -- so this closed a latent gap, not a live one. What it still does NOT check is whether each command's exit code is handled: that is why ADR-009's defect was invisible to it, and why the Assert-Ok coverage analysis in tests/guards/run.sh is a separate control. No longer a P1-11 follow-up.",
     "An evidence manifest structurally cannot record the SHA of its own commit. This one attests to the code head; the commit carrying it follows and is not self-covered.",
     "Review finding M10 from round 1 (Flutter/Dart analysis) and app/pubspec.lock are NOT done. pubspec.lock is BLOCKED, not deferred: Flutter is not installed in this environment and a hand-written lockfile would be a fabrication.",
     "`just verify` is not offline: cargo audit fetches the RustSec advisory database over the network on every run. Accepted and recorded in ADR-002; the compile-and-test path is genuinely offline and now has a CI regression gate proving it.",
     "-Scope Changed remains an alias for Full in both verify scripts even though 8.11 cites it as canonical. Deferred to P1-11; the deferral is safer now that the argument reaching the alias is validated (ADR-008).",
     "CI caching is deferred to P1-11 but is more than cosmetic: an uncached ~32-minute Windows job that any push cancels is a merge gate that is hard to observe passing. It was cancelled 9 times in 10 runs before the branch was frozen deliberately. Moving hyperfine and cargo-mutants out of bootstrap reduces but does not remove this.",
-    "The justfile and scripts/verify.sh remain duplicate implementations; unification is barred by D5, so drift is guarded by check-verify-parity.sh -- which now has behaviour tests, including for the case where its own parser yields nothing.",
+    "The justfile, scripts/verify.sh and scripts/verify.ps1 remain THREE duplicate implementations; unification is barred by D5, so drift is guarded three-way by check-verify-parity.sh since round 3 -- which has behaviour tests, including for a step missing from verify.ps1 alone and for the case where its own parser yields nothing.",
     "Cargo.toml, ai-toolchain.lock, rust-toolchain.toml and justfile retain CRLF. ADR-004 now counts the workarounds this costs and sets a threshold for escalating normalization out of P1-11.",
     "No fixtures are delivered. alpha-spec.md 9.5 lists them under P1-00; deferred to P1-03/P1-04 and recorded in ADR-001.",
     "The grid-alpha-opus5 environment still presets a stale DATABASE_URL (a /home/user/nfl-alpha path) that cannot be changed mid-session, so local commands override it explicitly. CI is unaffected -- the workflow sets DATABASE_URL at env: scope and the value it sets is correct."

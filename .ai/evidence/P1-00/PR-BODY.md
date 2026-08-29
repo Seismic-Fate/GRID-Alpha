@@ -206,9 +206,11 @@ Known limitations:               (1) Role-scoped sign-offs: NONE obtained.
                                      itself unproven. All fixed and regression-tested. ADR-001 D5
                                      records the lesson: freezing a check list is not the same as
                                      trusting it.
-                                 (4) check-verify-parity.sh does not read verify.ps1, so nothing
-                                     cross-checks the PowerShell implementation. That is why the
-                                     parity guard could not have caught ADR-009's defect.
+                                 (4) RESOLVED in round 3 (M2). check-verify-parity.sh now reads
+                                     all THREE frozen implementations. It still compares WHICH
+                                     commands each runs, not whether each exit code is checked --
+                                     which is why it could not have caught ADR-009's defect, and
+                                     why the Assert-Ok coverage analysis is a separate control.
                                  (5) An evidence manifest cannot record its own commit SHA.
                                  (6) Round 1's M10 (Flutter/Dart analysis) and app/pubspec.lock
                                      are NOT done. pubspec.lock is BLOCKED not deferred: Flutter
@@ -218,8 +220,9 @@ Known limitations:               (1) Role-scoped sign-offs: NONE obtained.
                                      RustSec database. Accepted, recorded in ADR-002.
                                  (8) -Scope Changed still unimplemented in both verify scripts
                                      though 8.11 cites it as canonical. Deferred to P1-11.
-                                 (9) justfile and verify.sh remain duplicate implementations;
-                                     unification barred by D5, drift guarded by the parity check.
+                                 (9) justfile, verify.sh and verify.ps1 remain three duplicate
+                                     implementations; unification barred by D5, drift guarded
+                                     three-way by the parity check since round 3.
                                 (10) Cargo.toml, ai-toolchain.lock, rust-toolchain.toml and
                                      justfile retain CRLF. ADR-004 counts the workarounds and
                                      sets a threshold for escalating out of P1-11.
@@ -229,7 +232,7 @@ Known limitations:               (1) Role-scoped sign-offs: NONE obtained.
                                      job that any push cancels is hard to observe passing.
                                 (13) The stale grid-alpha-opus5 environment is still uncorrected;
                                      .env supplies correct values where it does not override.
-Evidence manifest hash:          sha256:4c34c9d907c7cdfe2ea84de73169cf4a1a5a3587bf4347ac4373bf8762198835
+Evidence manifest hash:          sha256:ab891c4309eaf7524baf6c83eb1fde2200d5a57beec94f67b8683c73c8dbc6c1
                                  (.ai/evidence/P1-00/manifest.json)
 ```
 
