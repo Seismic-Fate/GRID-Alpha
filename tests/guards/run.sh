@@ -394,10 +394,23 @@ ps1_form_missed=0
 while IFS='|' read -r label line; do
     [[ -z "$label" ]] && continue
     m="$TMP/verify.ps1.form"
-    awk -v ins="$line" '
+    # ENVIRON, not -v: awk processes escape sequences in a -v value, so `-v ins='.\tools\x.exe'`
+    # silently delivered ".<TAB>ools\sbom.exe" (plus an `escape sequence \s` warning) and this
+    # case tested a mangled string instead of the relative-path form the review flagged -- which
+    # is the exact form the workflow uses to invoke verify.ps1. It still passed, for the wrong
+    # reason. Caught from a stray awk warning in CI, not from the case itself.
+    INS="$line" awk '
         { print }
-        /Assert-Ok "cargo fmt --all -- --check"/ && !done { print ins; done = 1 }
+        /Assert-Ok "cargo fmt --all -- --check"/ && !done { print ENVIRON["INS"]; done = 1 }
     ' "$ps1_plain" > "$m"
+    # Prove the fixture landed VERBATIM before judging the result. Its absence is why the -v
+    # escape bug survived: the case reported "detected" while testing a mangled string.
+    if ! grep -Fqx "$line" "$m"; then
+        bad "the $label fixture was not inserted verbatim" \
+            "wanted: [$line]  got: [$(grep -F "${line##*[[:space:]]}" "$m" | head -1)]"
+        ps1_form_missed=1
+        continue
+    fi
     if out="$(ps1_unguarded "$m" 2>&1)"; then
         bad "unguarded command as $label is not detected" "$out"
         ps1_form_missed=1
